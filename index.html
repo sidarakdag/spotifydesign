@@ -13,8 +13,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#07070B;
-    --ink-2:#0E0E14;
+    --ink:#000000;
+    --ink-2:#0A0A10;
     --rule:#1C1C24;
     --ash:#8A8A96;
     --bone:#EDEAE3;
@@ -124,7 +124,8 @@
   }
 
   /* ---------- scrubber ---------- */
-  .scrub{display:flex;flex-direction:column;gap:9px;}
+  .scrub{display:flex;flex-direction:column;gap:0;}
+  #dancers{display:block;width:100%;height:30px;margin-bottom:-2px;}
   .track{position:relative;height:24px;display:flex;align-items:center;cursor:pointer;touch-action:none;}
   .track::before{content:"";position:absolute;left:0;right:0;height:2px;background:var(--rule);border-radius:2px;}
   .fill{
@@ -139,7 +140,7 @@
   }
   .track:active .head{transform:translateX(-4.5px) scale(1.5);}
   .times{
-    display:flex;justify-content:space-between;
+    display:flex;justify-content:space-between;margin-top:9px;
     font-family:var(--font-mono);font-size:10.5px;color:var(--ash);letter-spacing:.06em;
   }
 
@@ -171,7 +172,8 @@
 
   /* ---------- sheets ---------- */
   #scrim{
-    position:fixed;inset:0;z-index:4;background:rgba(4,4,7,.55);
+    position:fixed;inset:0;z-index:4;background:rgba(0,0,0,.5);
+    -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
     opacity:0;pointer-events:none;transition:opacity .35s ease;
   }
   #scrim.on{opacity:1;pointer-events:auto;}
@@ -179,9 +181,15 @@
   .sheet{
     position:fixed;left:0;right:0;bottom:0;z-index:5;
     max-width:560px;margin:0 auto;
-    background:color-mix(in srgb, var(--ink-2) 92%, var(--accent));
-    border-top:1px solid var(--rule);
-    border-radius:16px 16px 0 0;
+    background:
+      linear-gradient(to bottom,
+        color-mix(in srgb, var(--accent) 9%, rgba(10,10,16,.52)),
+        rgba(6,6,10,.62));
+    -webkit-backdrop-filter:blur(30px) saturate(1.5);
+    backdrop-filter:blur(30px) saturate(1.5);
+    border-top:1px solid color-mix(in srgb, var(--accent) 22%, rgba(255,255,255,.07));
+    box-shadow:0 -20px 60px -20px rgba(0,0,0,.8);
+    border-radius:18px 18px 0 0;
     padding:14px 20px calc(var(--safe-b) + 18px);
     transform:translateY(101%);
     transition:transform .42s cubic-bezier(.22,1,.36,1);
@@ -195,8 +203,10 @@
   }
   .sheet-close{
     font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
-    color:var(--ash);border:1px solid var(--rule);border-radius:999px;padding:7px 12px;flex:0 0 auto;
+    color:var(--ash);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:7px 12px;flex:0 0 auto;
+    background:rgba(255,255,255,.04);
   }
+  .sheet-close:hover{color:var(--bone);border-color:var(--accent);}
   .sheet-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;}
 
   .search-input{
@@ -371,6 +381,7 @@
     </div>
 
     <div class="scrub">
+      <canvas id="dancers" aria-hidden="true"></canvas>
       <div class="track" id="seek" role="slider" aria-label="Seek" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
         <div class="fill" id="fill" style="width:0%"></div>
         <div class="head" id="head" style="left:0%"></div>
@@ -639,6 +650,9 @@ function toast(msg){
 /* =========================================================================
    COLOR — the interface takes its color from the record
    ========================================================================= */
+/* live palette, shared by the particle field and the dancers */
+const ACC = { h1:232, s1:.62, l1:.68, h2:330, s2:.72, l2:.70 };
+
 const swatch = document.createElement('canvas');
 swatch.width = swatch.height = 40;
 const sctx = swatch.getContext('2d', { willReadFrequently:true });
@@ -697,6 +711,8 @@ function extract(img){
     root.setProperty('--accent',   hsl(h1,s1,l1));
     root.setProperty('--accent-2', hsl(h2,s2,l2));
     P.retint(hsl(h1,s1,l1), hsl(h2,s2,l2));
+    ACC.h1 = h1; ACC.s1 = s1; ACC.l1 = l1;
+    ACC.h2 = h2; ACC.s2 = s2; ACC.l2 = l2;
   }catch(e){ /* tainted canvas — keep the last palette */ }
 }
 
@@ -832,6 +848,141 @@ async function poll(){
     capture(it);        // anything that plays is yours forever
   }
 }
+
+/* =========================================================================
+   DANCERS — a little crowd standing on the timeline.
+   Those the playhead has passed are lit in the album's colors and dancing.
+   Those ahead of it are dark and still, waiting their turn.
+   ========================================================================= */
+const D = (function(){
+  const cv = $('dancers');
+  const ctx = cv.getContext('2d');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const COUNT = 9;
+  let w = 0, h = 30, dpr = 1, t = 0, raf = null;
+
+  const crowd = Array.from({length:COUNT}, (_, i) => ({
+    seat: (i + 0.5) / COUNT,           // where they stand, 0..1 along the bar
+    phase: Math.random() * Math.PI * 2,
+    speed: 0.9 + Math.random() * 0.5,
+    tall:  0.86 + Math.random() * 0.28,
+    warm:  i % 2 === 0                 // alternate between the two album colors
+  }));
+
+  function size(){
+    const r = cv.getBoundingClientRect();
+    if(!r.width) return;
+    dpr = Math.min(devicePixelRatio || 1, 2);
+    w = r.width;
+    cv.width = w * dpr;
+    cv.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function figure(x, ground, d, energy, color){
+    const s = d.tall;
+    const beat = Math.sin(t * d.speed + d.phase);
+    const beat2 = Math.sin(t * d.speed * 2 + d.phase);
+
+    const bob = beat * 2.2 * energy;
+    const lean = beat2 * 0.16 * energy;
+
+    const hipY   = ground - 8 * s + bob;
+    const headY  = ground - 19 * s + bob;
+    const shldY  = ground - 15 * s + bob;
+
+    ctx.save();
+    ctx.translate(x, 0);
+    ctx.rotate(lean * 0.12);
+    ctx.translate(-x, 0);
+
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 1.6;
+    ctx.lineCap = 'round';
+
+    // head
+    ctx.beginPath();
+    ctx.arc(x, headY, 2.5 * s, 0, 6.2832);
+    ctx.fill();
+
+    // spine
+    ctx.beginPath();
+    ctx.moveTo(x, headY + 2.6 * s);
+    ctx.lineTo(x, hipY);
+    ctx.stroke();
+
+    // arms — thrown up when the energy is high
+    const armLift = energy * (0.8 + beat * 0.6);
+    ctx.beginPath();
+    ctx.moveTo(x, shldY);
+    ctx.lineTo(x - 5 * s, shldY - 5 * armLift + beat2 * 1.5);
+    ctx.moveTo(x, shldY);
+    ctx.lineTo(x + 5 * s, shldY - 5 * armLift - beat2 * 1.5);
+    ctx.stroke();
+
+    // legs
+    const step = beat * 2.4 * energy;
+    ctx.beginPath();
+    ctx.moveTo(x, hipY);
+    ctx.lineTo(x - 3 * s - step, ground);
+    ctx.moveTo(x, hipY);
+    ctx.lineTo(x + 3 * s + step, ground);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  function frame(){
+    raf = requestAnimationFrame(frame);
+    if(!w){ size(); return; }
+
+    t += 0.055;
+    ctx.clearRect(0, 0, w, h);
+
+    const ground = h - 2;
+    const prog = st.dur ? st.pos / st.dur : 0;
+    const live = st.playing;
+
+    for(const d of crowd){
+      const x = 4 + d.seat * (w - 8);
+      const passed = d.seat <= prog;
+
+      // energy peaks right at the playhead and falls off behind it
+      const near = 1 - Math.min(1, Math.abs(d.seat - prog) * 5);
+      let energy = passed ? (0.45 + near * 0.55) : 0;
+      if(!live) energy *= 0.12;
+
+      let color;
+      if(passed){
+        const hue = d.warm ? ACC.h1 : ACC.h2;
+        const sat = (d.warm ? ACC.s1 : ACC.s2) * 100;
+        const lit = (d.warm ? ACC.l1 : ACC.l2) * 100;
+        const alpha = 0.55 + near * 0.45;
+        color = 'hsl(' + hue.toFixed(0) + ' ' + sat.toFixed(0) + '% ' + lit.toFixed(0) + '% / ' + alpha.toFixed(2) + ')';
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 8 * near * (live ? 1 : 0.2);
+      }else{
+        color = 'rgba(138,138,150,0.26)';
+        ctx.shadowBlur = 0;
+      }
+
+      figure(x, ground, d, energy, color);
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  addEventListener('resize', size);
+  setTimeout(size, 60);
+  if(!reduce) raf = requestAnimationFrame(frame);
+
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden){ cancelAnimationFrame(raf); raf = null; }
+    else if(!raf && !reduce) raf = requestAnimationFrame(frame);
+  });
+
+  return { resize: size };
+})();
 
 /* =========================================================================
    CONTROLS
@@ -1475,6 +1626,7 @@ function enterApp(){
   $('app').setAttribute('aria-hidden','false');
 
   applyLook();
+  setTimeout(() => D.resize(), 50);   // canvas has no width until the app is shown
 
   // warm the index from cache so capture() appends instead of clobbering
   const cached = readCache();
