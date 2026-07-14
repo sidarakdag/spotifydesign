@@ -849,9 +849,10 @@ let searchT, searchSeq = 0;
 async function runSearch(q){
   const seq = ++searchSeq;
   note('Searching');
-  const r = await api('/search?q=' + encodeURIComponent(q) + '&type=track&limit=25');
+  const qs = new URLSearchParams({ q: q, type: 'track', limit: '20' });
+  const r = await api('/search?' + qs.toString());
   if(seq !== searchSeq) return;                     // a newer keystroke already won
-  if(!r.ok){ note(r.msg, true); return; }
+  if(!r.ok){ note(r.msg + ' [' + r.status + ']', true); return; }
   const items = (r.data && r.data.tracks && r.data.tracks.items) || [];
   if(!items.length){ note('Nothing found for "' + q + '"'); return; }
   results.innerHTML = '';
