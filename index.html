@@ -41,7 +41,7 @@
   input{font:inherit;}
   :focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px;}
 
-  /* ---------- ambient layers ---------- */
+  /* ---------- ambient ---------- */
   #field{position:fixed;inset:0;z-index:0;display:block;}
   #bloom{
     position:fixed;inset:0;z-index:0;pointer-events:none;
@@ -66,7 +66,6 @@
     max-width:560px;margin:0 auto;
   }
 
-  /* ---------- top bar ---------- */
   .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex:0 0 auto;}
   .wordmark{
     font-family:var(--font-display);font-style:italic;font-size:19px;letter-spacing:.02em;
@@ -78,18 +77,17 @@
     color:var(--ash);border:1px solid var(--rule);border-radius:999px;padding:7px 11px;
     transition:color .2s, border-color .2s;
   }
-  .chip:hover,.chip[aria-expanded="true"]{color:var(--bone);border-color:var(--accent);}
+  .chip:hover{color:var(--bone);border-color:var(--accent);}
 
   /* ---------- now playing ---------- */
   .stage{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;gap:26px;min-height:0;padding:8px 0;}
-
   .art-wrap{display:flex;justify-content:center;flex:0 1 auto;min-height:0;}
   .art{
     position:relative;width:min(74vw,300px);aspect-ratio:1;flex:0 0 auto;
     border-radius:4px;overflow:hidden;
     box-shadow:0 30px 90px -20px color-mix(in srgb, var(--accent) 50%, transparent),
                0 2px 0 0 rgba(255,255,255,.04) inset;
-    transition:transform .7s cubic-bezier(.22,1,.36,1), border-radius .5s ease;
+    transition:transform .7s cubic-bezier(.22,1,.36,1);
   }
   .art img{width:100%;height:100%;object-fit:cover;display:block;}
   body.paused .art{transform:scale(.94);}
@@ -107,12 +105,8 @@
 
   /* ---------- scrubber ---------- */
   .scrub{display:flex;flex-direction:column;gap:9px;}
-  .track{
-    position:relative;height:24px;display:flex;align-items:center;cursor:pointer;touch-action:none;
-  }
-  .track::before{
-    content:"";position:absolute;left:0;right:0;height:2px;background:var(--rule);border-radius:2px;
-  }
+  .track{position:relative;height:24px;display:flex;align-items:center;cursor:pointer;touch-action:none;}
+  .track::before{content:"";position:absolute;left:0;right:0;height:2px;background:var(--rule);border-radius:2px;}
   .fill{
     position:absolute;left:0;height:2px;border-radius:2px;
     background:linear-gradient(90deg, var(--accent), var(--accent-2));
@@ -132,58 +126,62 @@
   /* ---------- transport ---------- */
   .transport{display:flex;align-items:center;justify-content:space-between;gap:8px;}
   .tbtn{
-    width:46px;height:46px;display:grid;place-items:center;border-radius:50%;
+    position:relative;width:46px;height:46px;display:grid;place-items:center;border-radius:50%;
     color:var(--ash);transition:color .2s, transform .12s;
   }
   .tbtn:active{transform:scale(.9);}
-  .tbtn:hover{color:var(--bone);}
   .tbtn.on{color:var(--accent);}
   .tbtn svg{width:19px;height:19px;fill:currentColor;}
   .tbtn.big{
     width:66px;height:66px;background:var(--bone);color:var(--ink);
     box-shadow:0 12px 40px -8px color-mix(in srgb, var(--accent) 70%, transparent);
   }
-  .tbtn.big:hover{color:var(--ink);}
   .tbtn.big svg{width:24px;height:24px;}
   .repeat-dot{
-    position:absolute;margin-top:26px;width:3px;height:3px;border-radius:50%;background:var(--accent);
+    position:absolute;bottom:7px;width:3px;height:3px;border-radius:50%;background:var(--accent);
   }
 
-  /* ---------- bottom rail ---------- */
-  .rail{
-    flex:0 0 auto;display:flex;align-items:center;gap:14px;
-    padding-top:16px;border-top:1px solid var(--rule);
-  }
+  /* ---------- rail ---------- */
+  .rail{flex:0 0 auto;display:flex;align-items:center;gap:14px;padding-top:16px;border-top:1px solid var(--rule);}
   .vol{flex:1;display:flex;align-items:center;gap:10px;}
   .vol svg{width:15px;height:15px;fill:var(--ash);flex:0 0 auto;}
   .vol-track{position:relative;flex:1;height:22px;display:flex;align-items:center;cursor:pointer;touch-action:none;}
   .vol-track::before{content:"";position:absolute;left:0;right:0;height:2px;background:var(--rule);border-radius:2px;}
   .vol-fill{position:absolute;left:0;height:2px;background:var(--ash);border-radius:2px;}
 
-  /* ---------- panels (search / devices / skins) ---------- */
+  /* ---------- sheets ---------- */
+  #scrim{
+    position:fixed;inset:0;z-index:4;background:rgba(4,4,7,.55);
+    opacity:0;pointer-events:none;transition:opacity .35s ease;
+  }
+  #scrim.on{opacity:1;pointer-events:auto;}
+
   .sheet{
     position:fixed;left:0;right:0;bottom:0;z-index:5;
     max-width:560px;margin:0 auto;
     background:color-mix(in srgb, var(--ink-2) 92%, var(--accent));
     border-top:1px solid var(--rule);
     border-radius:16px 16px 0 0;
-    padding:16px 20px calc(var(--safe-b) + 20px);
+    padding:14px 20px calc(var(--safe-b) + 18px);
     transform:translateY(101%);
     transition:transform .42s cubic-bezier(.22,1,.36,1);
-    max-height:78vh;display:flex;flex-direction:column;gap:14px;
-    backdrop-filter:blur(20px);
+    height:82vh;display:flex;flex-direction:column;gap:12px;
   }
   .sheet.open{transform:translateY(0);}
-  .sheet-grab{width:34px;height:3px;border-radius:2px;background:var(--rule);margin:0 auto;flex:0 0 auto;}
-  .sheet h2{
+  .sheet-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex:0 0 auto;}
+  .sheet-head h2{
     font-family:var(--font-mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;
     color:var(--ash);margin:0;font-weight:400;
   }
-  .sheet-body{overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:2px;}
+  .sheet-close{
+    font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ash);border:1px solid var(--rule);border-radius:999px;padding:7px 12px;flex:0 0 auto;
+  }
+  .sheet-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;}
 
   .search-input{
     width:100%;background:transparent;border:0;border-bottom:1px solid var(--rule);
-    padding:10px 0;color:var(--bone);font-size:16px;
+    padding:11px 0;color:var(--bone);font-size:16px;flex:0 0 auto;
   }
   .search-input::placeholder{color:var(--ash);}
   .search-input:focus{outline:none;border-bottom-color:var(--accent);}
@@ -192,30 +190,21 @@
     display:flex;align-items:center;gap:12px;padding:9px 0;text-align:left;width:100%;
     border-bottom:1px solid color-mix(in srgb, var(--rule) 55%, transparent);
   }
-  .row:last-child{border-bottom:0;}
-  .row img{width:42px;height:42px;object-fit:cover;border-radius:2px;flex:0 0 auto;}
-  .row-text{min-width:0;flex:1;}
+  .row img{width:42px;height:42px;object-fit:cover;border-radius:2px;flex:0 0 auto;background:var(--rule);}
+  .row-text{min-width:0;flex:1;text-align:left;}
   .row-title{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .row-sub{font-size:11.5px;color:var(--ash);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
   .row-add{
     flex:0 0 auto;font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;
-    color:var(--ash);border:1px solid var(--rule);border-radius:999px;padding:6px 9px;
+    color:var(--ash);border:1px solid var(--rule);border-radius:999px;padding:7px 10px;
   }
-  .row-add:hover{color:var(--accent);border-color:var(--accent);}
   .row.active .row-title{color:var(--accent);}
 
-  .skin-grid{display:flex;gap:8px;}
-  .skin-opt{
-    flex:1;border:1px solid var(--rule);border-radius:6px;padding:14px 10px;text-align:center;
-    font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ash);
-    transition:border-color .2s,color .2s;
+  .note{
+    font-family:var(--font-mono);font-size:11px;color:var(--ash);letter-spacing:.05em;
+    padding:24px 0;text-align:center;line-height:1.7;
   }
-  .skin-opt.on{border-color:var(--accent);color:var(--bone);}
-
-  .empty{
-    font-family:var(--font-mono);font-size:11px;color:var(--ash);letter-spacing:.06em;
-    padding:22px 0;text-align:center;
-  }
+  .note.bad{color:#FF8A8A;}
 
   /* ---------- toast ---------- */
   #toast{
@@ -227,7 +216,7 @@
   }
   #toast.show{opacity:1;transform:translate(-50%,0);}
 
-  /* ---------- gate (login / setup) ---------- */
+  /* ---------- gate ---------- */
   #gate{
     position:fixed;inset:0;z-index:20;background:var(--ink);
     display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -239,10 +228,7 @@
     font-size:clamp(40px,13vw,62px);margin:0;line-height:1;
   }
   #gate p{font-size:13.5px;color:var(--ash);margin:0;line-height:1.65;max-width:34ch;}
-  .gate-btn{
-    background:var(--bone);color:var(--ink);border-radius:999px;padding:15px 34px;
-    font-size:13px;font-weight:600;letter-spacing:.02em;
-  }
+  .gate-btn{background:var(--bone);color:var(--ink);border-radius:999px;padding:15px 34px;font-size:13px;font-weight:600;}
   .gate-btn:active{transform:scale(.97);}
   .gate-field{
     width:100%;max-width:340px;background:transparent;border:1px solid var(--rule);border-radius:6px;
@@ -258,78 +244,15 @@
   .gate-note{font-size:11px;color:var(--ash);opacity:.75;}
   .link{color:var(--accent);text-decoration:none;border-bottom:1px solid currentColor;}
 
-  /* =====================================================
-     SKIN: TERMINAL
-     ===================================================== */
-  body[data-skin="terminal"]{--bone:#D6F5E3;}
-  body[data-skin="terminal"] #bloom{opacity:.18;filter:blur(70px);}
-  body[data-skin="terminal"].paused #bloom{opacity:.07;}
-  body[data-skin="terminal"] #field{opacity:.35;}
-  body[data-skin="terminal"] .wordmark{font-family:var(--font-mono);font-style:normal;font-size:11px;letter-spacing:.22em;text-transform:uppercase;}
-  body[data-skin="terminal"] .art{
-    width:min(52vw,190px);border-radius:0;
-    box-shadow:0 0 0 1px var(--rule);
-    filter:saturate(.55) contrast(1.15);
-  }
-  body[data-skin="terminal"] .art-wrap{justify-content:flex-start;}
-  body[data-skin="terminal"] .stage{gap:20px;}
-  body[data-skin="terminal"] .meta{text-align:left;padding:0;}
-  body[data-skin="terminal"] .title{
-    font-family:var(--font-mono);font-size:clamp(17px,4.6vw,21px);font-weight:500;
-    letter-spacing:-.01em;line-height:1.35;
-  }
-  body[data-skin="terminal"] .title::before{content:"> ";color:var(--accent);}
-  body[data-skin="terminal"] .artist{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;}
-  body[data-skin="terminal"] .artist::before{content:"@ ";color:var(--accent);}
-  body[data-skin="terminal"] .track{display:none;}
-  body[data-skin="terminal"] .ascii{
-    display:block;font-family:var(--font-mono);font-size:12px;letter-spacing:-.02em;
-    color:var(--accent);white-space:nowrap;overflow:hidden;line-height:1.4;
-  }
-  body[data-skin="terminal"] .tbtn{border-radius:0;border:1px solid var(--rule);width:44px;height:40px;}
-  body[data-skin="terminal"] .tbtn.big{background:transparent;color:var(--accent);border-color:var(--accent);width:64px;box-shadow:none;}
-  body[data-skin="terminal"] .tbtn.big:hover{color:var(--accent);}
-  body[data-skin="terminal"] .sheet{border-radius:0;}
-  body[data-skin="terminal"] .row img{border-radius:0;filter:saturate(.55);}
-
-  /* =====================================================
-     SKIN: VINYL
-     ===================================================== */
-  body[data-skin="vinyl"]{--ink:#0B0705;--ink-2:#141010;--bone:#F2E6D8;--rule:#2A211C;--ash:#9C8676;}
-  body[data-skin="vinyl"] .art{
-    border-radius:50%;width:min(78vw,320px);
-    animation:spin 9s linear infinite;
-    box-shadow:0 0 0 8px #0B0705, 0 0 0 9px color-mix(in srgb, var(--accent) 45%, transparent),
-               0 34px 80px -22px rgba(0,0,0,.9);
-  }
-  body[data-skin="vinyl"] .art::after{
-    content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;
-    background:repeating-radial-gradient(circle at 50% 50%, rgba(0,0,0,.32) 0 1px, transparent 1px 5px);
-    mix-blend-mode:multiply;
-  }
-  body[data-skin="vinyl"] .art::before{
-    content:"";position:absolute;top:50%;left:50%;width:15%;aspect-ratio:1;z-index:2;
-    transform:translate(-50%,-50%);border-radius:50%;
-    background:var(--ink);box-shadow:0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent);
-  }
-  body[data-skin="vinyl"].paused .art{animation-play-state:paused;transform:scale(.96);}
-  @keyframes spin{to{transform:rotate(360deg);}}
-  body[data-skin="vinyl"] .title{font-style:italic;}
-  body[data-skin="vinyl"] #field{opacity:.5;}
-
-  @media (prefers-reduced-motion: reduce){
-    *{animation:none !important;transition-duration:.01ms !important;}
-    body[data-skin="vinyl"] .art{animation:none !important;}
-  }
-  .ascii{display:none;}
-  @media (max-height:660px){
-    .art{width:min(56vw,210px);}
+  @media (prefers-reduced-motion: reduce){ *{animation:none !important;transition-duration:.01ms !important;} }
+  @media (max-height:680px){
+    .art{width:min(54vw,200px);}
     .stage{gap:18px;}
     .title{font-size:clamp(23px,6vw,30px);}
   }
 </style>
 </head>
-<body class="paused" data-skin="nocturne">
+<body class="paused">
 
 <canvas id="field"></canvas>
 <div id="bloom"></div>
@@ -340,10 +263,10 @@
   <h1>Nocturne</h1>
   <p id="gate-copy">A private remote for Spotify. Your player, your colors, your rules.</p>
   <div id="gate-setup" style="display:none;flex-direction:column;align-items:center;gap:16px;width:100%;">
-    <div class="uri"><b>Redirect URI — paste this into your Spotify app settings</b><span id="uri-out"></span></div>
+    <div class="uri"><b>Redirect URI — this must match your Spotify app exactly</b><span id="uri-out"></span></div>
     <input id="cid" class="gate-field" placeholder="Paste your Client ID" autocomplete="off" spellcheck="false">
     <button class="gate-btn" id="save-cid">Save and continue</button>
-    <span class="gate-note">Create the app at <a class="link" href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">developer.spotify.com</a> · Web API</span>
+    <span class="gate-note">Create the app at <a class="link" href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">developer.spotify.com</a></span>
   </div>
   <button class="gate-btn" id="login" style="display:none;">Connect Spotify</button>
   <span class="gate-note" id="gate-err" style="display:none;color:#FF8A8A;"></span>
@@ -356,8 +279,8 @@
     <span class="wordmark">Nocturne</span>
     <div class="topbar-actions">
       <button class="chip" id="btn-search">Search</button>
+      <button class="chip" id="btn-queue">Queue</button>
       <button class="chip" id="btn-device">Output</button>
-      <button class="chip" id="btn-skin">Skin</button>
     </div>
   </header>
 
@@ -370,11 +293,10 @@
 
     <div class="meta">
       <h1 class="title" id="title">Nothing playing</h1>
-      <p class="artist" id="artist">Open Spotify, hit play once, come back</p>
+      <p class="artist" id="artist">Open Spotify, play a second of anything, come back</p>
     </div>
 
     <div class="scrub">
-      <div class="ascii" id="ascii"></div>
       <div class="track" id="seek" role="slider" aria-label="Seek" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
         <div class="fill" id="fill" style="width:0%"></div>
         <div class="head" id="head" style="left:0%"></div>
@@ -415,28 +337,31 @@
 </div>
 
 <!-- ============ SHEETS ============ -->
+<div id="scrim"></div>
+
 <div class="sheet" id="sheet-search">
-  <div class="sheet-grab"></div>
-  <input class="search-input" id="q" placeholder="Search tracks, artists, albums" autocomplete="off">
-  <div class="sheet-body" id="results"><div class="empty">Type to search</div></div>
+  <div class="sheet-head">
+    <h2>Search</h2>
+    <button class="sheet-close" data-close>Close</button>
+  </div>
+  <input class="search-input" id="q" type="text" placeholder="Song, artist, album" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search">
+  <div class="sheet-body" id="results"><div class="note">Type to search</div></div>
+</div>
+
+<div class="sheet" id="sheet-queue">
+  <div class="sheet-head">
+    <h2>Up next</h2>
+    <button class="sheet-close" data-close>Close</button>
+  </div>
+  <div class="sheet-body" id="queue"><div class="note">Nothing queued</div></div>
 </div>
 
 <div class="sheet" id="sheet-device">
-  <div class="sheet-grab"></div>
-  <h2>Playback output</h2>
-  <div class="sheet-body" id="devices"><div class="empty">Loading devices</div></div>
-</div>
-
-<div class="sheet" id="sheet-skin">
-  <div class="sheet-grab"></div>
-  <h2>Interface</h2>
-  <div class="skin-grid">
-    <button class="skin-opt on" data-skin="nocturne">Nocturne</button>
-    <button class="skin-opt" data-skin="terminal">Terminal</button>
-    <button class="skin-opt" data-skin="vinyl">Vinyl</button>
+  <div class="sheet-head">
+    <h2>Playback output</h2>
+    <button class="sheet-close" data-close>Close</button>
   </div>
-  <h2 style="margin-top:6px">Up next</h2>
-  <div class="sheet-body" id="queue"><div class="empty">Nothing queued</div></div>
+  <div class="sheet-body" id="devices"><div class="note">Loading devices</div></div>
 </div>
 
 <div id="toast"></div>
@@ -444,8 +369,7 @@
 <script>
 /* =========================================================================
    NOCTURNE — a private Spotify remote
-   Auth: OAuth 2.0 + PKCE (no server, no secret)
-   Playback: Spotify Connect Web API — your phone's Spotify app is the speaker
+   OAuth 2.0 + PKCE. Your phone's Spotify app is the speaker.
    ========================================================================= */
 
 const API   = 'https://api.spotify.com/v1';
@@ -474,12 +398,11 @@ const S = {
   set exp(v){ localStorage.setItem('nc_exp', v); },
   get ver(){ return localStorage.getItem('nc_ver'); },
   set ver(v){ localStorage.setItem('nc_ver', v); },
-  get skin(){ return localStorage.getItem('nc_skin') || 'nocturne'; },
-  set skin(v){ localStorage.setItem('nc_skin', v); },
-  clear(){ ['nc_tok','nc_ref','nc_exp','nc_ver'].forEach(k=>localStorage.removeItem(k)); }
+  clear(){ ['nc_tok','nc_ref','nc_exp','nc_ver'].forEach(k => localStorage.removeItem(k)); }
 };
 
 const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ---------- PKCE ---------- */
 const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf)))
@@ -489,7 +412,7 @@ async function login(){
   const verifier = b64url(crypto.getRandomValues(new Uint8Array(48)));
   S.ver = verifier;
   const challenge = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
-  const p = new URLSearchParams({
+  location.href = AUTH + '?' + new URLSearchParams({
     client_id: S.cid,
     response_type: 'code',
     redirect_uri: REDIRECT,
@@ -497,7 +420,6 @@ async function login(){
     code_challenge: challenge,
     scope: SCOPES
   });
-  location.href = `${AUTH}?${p}`;
 }
 
 async function exchange(code){
@@ -535,21 +457,46 @@ async function refresh(){
   S.exp = Date.now() + (d.expires_in - 60) * 1000;
 }
 
-/* ---------- API wrapper ---------- */
-async function api(path, opts = {}){
-  if(Date.now() > S.exp) await refresh();
-  const r = await fetch(path.startsWith('http') ? path : API + path, {
-    ...opts,
-    headers:{ Authorization:'Bearer ' + S.tok, 'Content-Type':'application/json', ...(opts.headers||{}) }
-  });
-  if(r.status === 401){ await refresh(); return api(path, opts); }
-  if(r.status === 204 || r.status === 202) return null;
-  if(r.status === 404){ toast('No active device'); return null; }
-  if(r.status === 403){ toast('Premium required for that'); return null; }
-  if(r.status === 429){ toast('Slow down'); return null; }
-  if(!r.ok) return null;
-  const t = await r.text();
-  return t ? JSON.parse(t) : null;
+/* ---------- API ----------
+   Always returns { ok, status, data, msg }. Nothing fails silently. */
+async function api(path, opts = {}, _retried = false){
+  try{
+    if(Date.now() > S.exp) await refresh();
+  }catch(e){
+    return { ok:false, status:0, data:null, msg:'Session expired — hit Exit and reconnect' };
+  }
+
+  let r;
+  try{
+    r = await fetch(path.startsWith('http') ? path : API + path, {
+      ...opts,
+      headers:{ Authorization:'Bearer ' + S.tok, 'Content-Type':'application/json', ...(opts.headers||{}) }
+    });
+  }catch(e){
+    return { ok:false, status:0, data:null, msg:'Network unreachable' };
+  }
+
+  if(r.status === 401 && !_retried){
+    try{ await refresh(); }catch(e){ return { ok:false, status:401, data:null, msg:'Session expired — reconnect' }; }
+    return api(path, opts, true);
+  }
+
+  if(r.status === 204 || r.status === 202) return { ok:true, status:r.status, data:null };
+
+  let data = null;
+  const text = await r.text();
+  if(text){ try{ data = JSON.parse(text); }catch(e){} }
+
+  if(!r.ok){
+    const msg =
+      r.status === 401 ? 'Not authorized — reconnect' :
+      r.status === 403 ? 'Premium required for that' :
+      r.status === 404 ? 'No active device — play a second in Spotify' :
+      r.status === 429 ? 'Rate limited, wait a moment' :
+      (data && data.error && data.error.message) || ('Spotify error ' + r.status);
+    return { ok:false, status:r.status, data, msg };
+  }
+  return { ok:true, status:r.status, data };
 }
 
 /* ---------- toast ---------- */
@@ -559,7 +506,7 @@ function toast(msg){
   el.textContent = msg;
   el.classList.add('show');
   clearTimeout(toastT);
-  toastT = setTimeout(()=>el.classList.remove('show'), 2200);
+  toastT = setTimeout(() => el.classList.remove('show'), 2400);
 }
 
 /* =========================================================================
@@ -583,52 +530,53 @@ function rgb2hsl(r,g,b){
   const s = d ? d / (1 - Math.abs(2*l - 1)) : 0;
   return [h, s, l];
 }
-const hsl = (h,s,l) => `hsl(${h.toFixed(0)} ${(s*100).toFixed(0)}% ${(l*100).toFixed(0)}%)`;
+const hsl = (h,s,l) => 'hsl(' + h.toFixed(0) + ' ' + (s*100).toFixed(0) + '% ' + (l*100).toFixed(0) + '%)';
 
 function extract(img){
   try{
+    sctx.clearRect(0,0,40,40);
     sctx.drawImage(img, 0, 0, 40, 40);
     const px = sctx.getImageData(0,0,40,40).data;
-    const bins = new Array(24).fill(null).map(()=>({w:0,h:0,s:0,l:0}));
+    const bins = Array.from({length:24}, () => ({w:0,h:0,s:0,l:0}));
     for(let i=0;i<px.length;i+=4){
-      const [h,s,l] = rgb2hsl(px[i],px[i+1],px[i+2]);
-      if(l < .12 || l > .93) continue;          // ignore crushed blacks / blown whites
+      const c = rgb2hsl(px[i],px[i+1],px[i+2]);
+      const h = c[0], s = c[1], l = c[2];
+      if(l < .12 || l > .93) continue;
       const weight = s * (1 - Math.abs(l - .55) * 1.4);
       if(weight <= 0) continue;
       const b = bins[Math.floor(h/15) % 24];
       b.w += weight; b.h += h*weight; b.s += s*weight; b.l += l*weight;
     }
-    const sorted = bins.filter(b=>b.w>0).sort((a,b)=>b.w-a.w);
+    const sorted = bins.filter(b => b.w > 0).sort((a,b) => b.w - a.w);
     if(!sorted.length) return;
     const norm = b => [b.h/b.w, Math.min(b.s/b.w, .92), b.l/b.w];
 
-    let [h1,s1,l1] = norm(sorted[0]);
-    l1 = Math.min(Math.max(l1, .52), .72);
-    s1 = Math.max(s1, .5);
+    const first = norm(sorted[0]);
+    const h1 = first[0];
+    const s1 = Math.max(first[1], .5);
+    const l1 = Math.min(Math.max(first[2], .52), .72);
 
-    // second color: the most distant hue with real presence, or a shifted complement
-    let second = sorted.slice(1).find(b => {
+    const second = sorted.slice(1).find(b => {
       const d = Math.abs(norm(b)[0] - h1);
-      return Math.min(d, 360-d) > 45;
+      return Math.min(d, 360 - d) > 45;
     });
     let h2, s2, l2;
-    if(second){ [h2,s2,l2] = norm(second); }
+    if(second){ const n = norm(second); h2 = n[0]; s2 = n[1]; l2 = n[2]; }
     else { h2 = (h1 + 48) % 360; s2 = s1; l2 = l1; }
-    l2 = Math.min(Math.max(l2, .5), .7);
     s2 = Math.max(s2, .48);
+    l2 = Math.min(Math.max(l2, .5), .7);
 
     const root = document.documentElement.style;
     root.setProperty('--accent',   hsl(h1,s1,l1));
     root.setProperty('--accent-2', hsl(h2,s2,l2));
-    document.querySelector('meta[name=theme-color]').setAttribute('content','#07070B');
     P.retint(hsl(h1,s1,l1), hsl(h2,s2,l2));
-  }catch(e){ /* tainted canvas — keep last palette */ }
+  }catch(e){ /* tainted canvas — keep the last palette */ }
 }
 
 /* =========================================================================
-   PARTICLE FIELD — slow, ambient, colored by the record
+   PARTICLE FIELD
    ========================================================================= */
-const P = (() => {
+const P = (function(){
   const cv = $('field');
   const ctx = cv.getContext('2d');
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -641,21 +589,16 @@ const P = (() => {
     cv.style.width = w + 'px'; cv.style.height = h + 'px';
     ctx.setTransform(dpr,0,0,dpr,0,0);
   }
-
   function seed(){
     const n = reduce ? 0 : Math.round(Math.min(w,h) / 8);
     parts = Array.from({length:n}, () => ({
-      x: Math.random()*w,
-      y: Math.random()*h,
+      x: Math.random()*w, y: Math.random()*h,
       r: Math.random()*1.7 + .35,
-      vx:(Math.random()-.5)*.11,
-      vy:-Math.random()*.16 - .03,
-      a: Math.random()*.5 + .12,
-      p: Math.random()*Math.PI*2,
+      vx:(Math.random()-.5)*.11, vy:-Math.random()*.16 - .03,
+      a: Math.random()*.5 + .12, p: Math.random()*Math.PI*2,
       c: Math.random() > .5
     }));
   }
-
   function frame(){
     t += .006;
     ctx.clearRect(0,0,w,h);
@@ -668,8 +611,7 @@ const P = (() => {
       if(p.y < -12){ p.y = h + 12; p.x = Math.random()*w; }
       if(p.x < -12) p.x = w + 12;
       if(p.x > w + 12) p.x = -12;
-      const flicker = .72 + Math.sin(p.p * 1.7) * .28;
-      ctx.globalAlpha = p.a * flicker * (playing ? 1 : .42);
+      ctx.globalAlpha = p.a * (.72 + Math.sin(p.p * 1.7) * .28) * (playing ? 1 : .42);
       ctx.fillStyle = p.c ? c1 : c2;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, 6.2832);
@@ -679,80 +621,30 @@ const P = (() => {
     ctx.globalCompositeOperation = 'source-over';
     raf = requestAnimationFrame(frame);
   }
-
-  addEventListener('resize', () => { size(); seed(); });
+  addEventListener('resize', function(){ size(); seed(); });
   size(); seed();
   if(!reduce) raf = requestAnimationFrame(frame);
-
-  document.addEventListener('visibilitychange', () => {
+  document.addEventListener('visibilitychange', function(){
     if(document.hidden){ cancelAnimationFrame(raf); raf = null; }
-    else if(!raf && !reduce){ raf = requestAnimationFrame(frame); }
+    else if(!raf && !reduce) raf = requestAnimationFrame(frame);
   });
-
   return {
-    retint(a,b){ c1 = a; c2 = b; },
-    setPlaying(v){ playing = v; }
+    retint: function(a,b){ c1 = a; c2 = b; },
+    setPlaying: function(v){ playing = v; }
   };
 })();
 
 /* =========================================================================
    PLAYER STATE
    ========================================================================= */
-let st = { playing:false, pos:0, dur:0, id:null, shuffle:false, repeat:'off', vol:50, seeking:false };
+const st = { playing:false, pos:0, dur:0, id:null, shuffle:false, repeat:'off', vol:50, seeking:false };
+let volDrag = false;
+
 const fmt = ms => {
   const s = Math.max(0, Math.floor(ms/1000));
-  return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+  return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
 };
 
-async function poll(){
-  const d = await api('/me/player');
-  if(!d || !d.item){
-    document.body.classList.add('paused');
-    P.setPlaying(false);
-    return;
-  }
-  const it = d.item;
-
-  st.playing = d.is_playing;
-  st.dur = it.duration_ms;
-  if(!st.seeking) st.pos = d.progress_ms || 0;
-  st.shuffle = d.shuffle_state;
-  st.repeat = d.repeat_state;
-  if(d.device && typeof d.device.volume_percent === 'number' && !volDrag){
-    st.vol = d.device.volume_percent;
-    $('vol-fill').style.width = st.vol + '%';
-    $('vol').setAttribute('aria-valuenow', st.vol);
-  }
-
-  document.body.classList.toggle('paused', !st.playing);
-  P.setPlaying(st.playing);
-  $('ico-play').style.display  = st.playing ? 'none' : 'block';
-  $('ico-pause').style.display = st.playing ? 'block' : 'none';
-  $('btn-play').setAttribute('aria-label', st.playing ? 'Pause' : 'Play');
-  $('btn-shuffle').classList.toggle('on', st.shuffle);
-  $('btn-repeat').classList.toggle('on', st.repeat !== 'off');
-  $('repeat-dot').style.display = st.repeat === 'track' ? 'block' : 'none';
-
-  if(it.id !== st.id){
-    st.id = it.id;
-    $('title').textContent  = it.name;
-    $('artist').textContent = (it.artists || []).map(a=>a.name).join(', ');
-    const url = it.album?.images?.[0]?.url;
-    if(url){
-      const img = $('art');
-      img.onload = () => extract(img);
-      img.src = url;
-    }
-    document.title = it.name + ' — Nocturne';
-    loadQueue();
-  }
-}
-
-/* smooth local progress between polls */
-function tick(){
-  if(st.playing && !st.seeking) st.pos = Math.min(st.pos + 250, st.dur);
-  paint();
-}
 function paint(){
   const pct = st.dur ? (st.pos / st.dur) * 100 : 0;
   $('fill').style.width = pct + '%';
@@ -760,71 +652,123 @@ function paint(){
   $('t-now').textContent = fmt(st.pos);
   $('t-end').textContent = fmt(st.dur);
   $('seek').setAttribute('aria-valuenow', Math.round(pct));
-  // terminal skin: ascii bar
-  const cells = 26, done = Math.round(pct/100*cells);
-  $('ascii').textContent = '[' + '█'.repeat(done) + '·'.repeat(cells-done) + '] ' + Math.round(pct) + '%';
+}
+function tick(){
+  if(st.playing && !st.seeking) st.pos = Math.min(st.pos + 250, st.dur);
+  paint();
+}
+function setPlayIcon(on){
+  $('ico-play').style.display  = on ? 'none' : 'block';
+  $('ico-pause').style.display = on ? 'block' : 'none';
+  $('btn-play').setAttribute('aria-label', on ? 'Pause' : 'Play');
+  document.body.classList.toggle('paused', !on);
+  P.setPlaying(on);
+}
+
+async function poll(){
+  const res = await api('/me/player');
+  if(!res.ok || !res.data || !res.data.item){ setPlayIcon(false); return; }
+  const d = res.data;
+  const it = d.item;
+
+  st.playing = d.is_playing;
+  st.dur = it.duration_ms;
+  if(!st.seeking) st.pos = d.progress_ms || 0;
+  st.shuffle = d.shuffle_state;
+  st.repeat  = d.repeat_state;
+
+  if(d.device && typeof d.device.volume_percent === 'number' && !volDrag){
+    st.vol = d.device.volume_percent;
+    $('vol-fill').style.width = st.vol + '%';
+    $('vol').setAttribute('aria-valuenow', st.vol);
+  }
+
+  setPlayIcon(st.playing);
+  $('btn-shuffle').classList.toggle('on', st.shuffle);
+  $('btn-repeat').classList.toggle('on', st.repeat !== 'off');
+  $('repeat-dot').style.display = st.repeat === 'track' ? 'block' : 'none';
+
+  if(it.id !== st.id){
+    st.id = it.id;
+    $('title').textContent  = it.name;
+    $('artist').textContent = (it.artists || []).map(a => a.name).join(', ');
+    const url = it.album && it.album.images && it.album.images[0] && it.album.images[0].url;
+    if(url){
+      const img = $('art');
+      img.onload = function(){ extract(img); };
+      img.src = url;
+    }
+    document.title = it.name + ' — Nocturne';
+  }
 }
 
 /* =========================================================================
    CONTROLS
    ========================================================================= */
-function optimistic(fn){ fn(); paint(); }
-
 $('btn-play').onclick = async () => {
   const next = !st.playing;
-  st.playing = next;                                  // instant feedback
-  document.body.classList.toggle('paused', !next);
-  P.setPlaying(next);
-  $('ico-play').style.display  = next ? 'none' : 'block';
-  $('ico-pause').style.display = next ? 'block' : 'none';
-  await api(next ? '/me/player/play' : '/me/player/pause', { method:'PUT' });
-  setTimeout(poll, 260);
+  st.playing = next;
+  setPlayIcon(next);
+  const r = await api(next ? '/me/player/play' : '/me/player/pause', { method:'PUT' });
+  if(!r.ok) toast(r.msg);
+  setTimeout(poll, 300);
 };
-$('btn-next').onclick = async () => { await api('/me/player/next', {method:'POST'}); st.pos = 0; setTimeout(poll, 420); };
+$('btn-next').onclick = async () => {
+  const r = await api('/me/player/next', { method:'POST' });
+  if(!r.ok) toast(r.msg);
+  st.pos = 0;
+  setTimeout(poll, 450);
+};
 $('btn-prev').onclick = async () => {
-  if(st.pos > 4000){ st.pos = 0; await api('/me/player/seek?position_ms=0', {method:'PUT'}); }
-  else { await api('/me/player/previous', {method:'POST'}); st.pos = 0; }
-  setTimeout(poll, 420);
+  let r;
+  if(st.pos > 4000){ st.pos = 0; r = await api('/me/player/seek?position_ms=0', { method:'PUT' }); }
+  else { r = await api('/me/player/previous', { method:'POST' }); st.pos = 0; }
+  if(!r.ok) toast(r.msg);
+  setTimeout(poll, 450);
 };
 $('btn-shuffle').onclick = async () => {
   st.shuffle = !st.shuffle;
   $('btn-shuffle').classList.toggle('on', st.shuffle);
-  await api(`/me/player/shuffle?state=${st.shuffle}`, {method:'PUT'});
+  const r = await api('/me/player/shuffle?state=' + st.shuffle, { method:'PUT' });
+  if(!r.ok) toast(r.msg);
 };
 $('btn-repeat').onclick = async () => {
   const order = ['off','context','track'];
   st.repeat = order[(order.indexOf(st.repeat) + 1) % 3];
   $('btn-repeat').classList.toggle('on', st.repeat !== 'off');
   $('repeat-dot').style.display = st.repeat === 'track' ? 'block' : 'none';
-  await api(`/me/player/repeat?state=${st.repeat}`, {method:'PUT'});
+  const r = await api('/me/player/repeat?state=' + st.repeat, { method:'PUT' });
+  if(!r.ok) toast(r.msg);
 };
 
-/* drag-to-seek + drag volume, one shared handler */
 function draggable(el, onMove, onEnd){
   let dragging = false;
   const pct = e => {
     const r = el.getBoundingClientRect();
-    const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
-    return Math.min(1, Math.max(0, x / r.width));
+    return Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
   };
-  const down = e => { dragging = true; onMove(pct(e)); e.preventDefault(); };
-  const move = e => { if(dragging) onMove(pct(e)); };
-  const up   = e => { if(!dragging) return; dragging = false; onEnd(); };
-  el.addEventListener('pointerdown', down);
-  addEventListener('pointermove', move);
-  addEventListener('pointerup', up);
-  addEventListener('pointercancel', up);
+  el.addEventListener('pointerdown', e => {
+    dragging = true;
+    if(el.setPointerCapture) el.setPointerCapture(e.pointerId);
+    onMove(pct(e));
+    e.preventDefault();
+  });
+  el.addEventListener('pointermove', e => { if(dragging) onMove(pct(e)); });
+  const up = () => { if(dragging){ dragging = false; onEnd(); } };
+  el.addEventListener('pointerup', up);
+  el.addEventListener('pointercancel', up);
 }
 
 draggable($('seek'),
   p => { st.seeking = true; st.pos = p * st.dur; paint(); },
   async () => {
-    await api(`/me/player/seek?position_ms=${Math.round(st.pos)}`, {method:'PUT'});
-    setTimeout(()=>{ st.seeking = false; }, 500);
+    const r = await api('/me/player/seek?position_ms=' + Math.round(st.pos), { method:'PUT' });
+    if(!r.ok) toast(r.msg);
+    setTimeout(() => { st.seeking = false; }, 500);
   }
 );
 
-let volDrag = false, volT;
+let volT;
 draggable($('vol'),
   p => {
     volDrag = true;
@@ -832,90 +776,125 @@ draggable($('vol'),
     $('vol-fill').style.width = st.vol + '%';
     $('vol').setAttribute('aria-valuenow', st.vol);
     clearTimeout(volT);
-    volT = setTimeout(()=>api(`/me/player/volume?volume_percent=${st.vol}`, {method:'PUT'}), 180);
+    volT = setTimeout(() => api('/me/player/volume?volume_percent=' + st.vol, { method:'PUT' }), 200);
   },
-  () => { setTimeout(()=>{ volDrag = false; }, 600); }
+  () => { setTimeout(() => { volDrag = false; }, 700); }
 );
 
 /* =========================================================================
-   SHEETS
+   SHEETS — explicit open and close
    ========================================================================= */
-const sheets = ['sheet-search','sheet-device','sheet-skin'];
+const SHEETS = ['sheet-search','sheet-queue','sheet-device'];
 function openSheet(id){
-  sheets.forEach(s => $(s).classList.toggle('open', s === id));
+  SHEETS.forEach(s => $(s).classList.toggle('open', s === id));
+  $('scrim').classList.add('on');
 }
-function closeSheets(){ sheets.forEach(s => $(s).classList.remove('open')); }
+function closeSheets(){
+  SHEETS.forEach(s => $(s).classList.remove('open'));
+  $('scrim').classList.remove('on');
+  $('q').blur();
+}
+document.querySelectorAll('[data-close]').forEach(b => { b.onclick = closeSheets; });
+$('scrim').onclick = closeSheets;
 
-$('btn-search').onclick = () => { openSheet('sheet-search'); setTimeout(()=>$('q').focus(), 320); };
+$('btn-search').onclick = () => { openSheet('sheet-search'); setTimeout(() => $('q').focus(), 350); };
+$('btn-queue').onclick  = () => { openSheet('sheet-queue'); loadQueue(); };
 $('btn-device').onclick = () => { openSheet('sheet-device'); loadDevices(); };
-$('btn-skin').onclick   = () => { openSheet('sheet-skin'); loadQueue(); };
 
-document.addEventListener('pointerdown', e => {
-  if(e.target.closest('.sheet') || e.target.closest('.chip')) return;
-  closeSheets();
-});
+/* ---------- shared row ---------- */
+function trackRow(t, withQueue){
+  const row = document.createElement('div');
+  row.className = 'row';
+
+  const img = document.createElement('img');
+  const imgs = (t.album && t.album.images) || [];
+  img.src = (imgs[2] && imgs[2].url) || (imgs[0] && imgs[0].url) || '';
+  img.alt = '';
+
+  const btn = document.createElement('button');
+  btn.className = 'row-text';
+  btn.innerHTML = '<div class="row-title">' + esc(t.name) + '</div>' +
+                  '<div class="row-sub">' + esc((t.artists||[]).map(a => a.name).join(', ')) + '</div>';
+  btn.onclick = async () => {
+    const r = await api('/me/player/play', { method:'PUT', body: JSON.stringify({ uris:[t.uri] }) });
+    if(!r.ok){ toast(r.msg); return; }
+    closeSheets();
+    st.pos = 0;
+    setTimeout(poll, 550);
+  };
+
+  row.appendChild(img);
+  row.appendChild(btn);
+
+  if(withQueue){
+    const add = document.createElement('button');
+    add.className = 'row-add';
+    add.textContent = 'Queue';
+    add.onclick = async () => {
+      const r = await api('/me/player/queue?uri=' + encodeURIComponent(t.uri), { method:'POST' });
+      toast(r.ok ? 'Queued · ' + t.name : r.msg);
+    };
+    row.appendChild(add);
+  }
+  return row;
+}
 
 /* ---------- search ---------- */
-let searchT;
+const results = $('results');
+function note(msg, bad){
+  results.innerHTML = '<div class="note' + (bad ? ' bad' : '') + '">' + esc(msg) + '</div>';
+}
+
+let searchT, searchSeq = 0;
+async function runSearch(q){
+  const seq = ++searchSeq;
+  note('Searching');
+  const r = await api('/search?q=' + encodeURIComponent(q) + '&type=track&limit=25');
+  if(seq !== searchSeq) return;                     // a newer keystroke already won
+  if(!r.ok){ note(r.msg, true); return; }
+  const items = (r.data && r.data.tracks && r.data.tracks.items) || [];
+  if(!items.length){ note('Nothing found for "' + q + '"'); return; }
+  results.innerHTML = '';
+  items.forEach(t => results.appendChild(trackRow(t, true)));
+}
+
 $('q').addEventListener('input', e => {
   clearTimeout(searchT);
   const q = e.target.value.trim();
-  if(!q){ $('results').innerHTML = '<div class="empty">Type to search</div>'; return; }
-  searchT = setTimeout(async () => {
-    const d = await api(`/search?q=${encodeURIComponent(q)}&type=track&limit=20`);
-    const items = d?.tracks?.items || [];
-    if(!items.length){ $('results').innerHTML = '<div class="empty">Nothing found</div>'; return; }
-    $('results').innerHTML = '';
-    items.forEach(t => {
-      const row = document.createElement('div');
-      row.className = 'row';
-      const img = t.album?.images?.[2]?.url || t.album?.images?.[0]?.url || '';
-      row.innerHTML = `
-        <img src="${img}" alt="">
-        <button class="row-text" style="text-align:left">
-          <div class="row-title">${esc(t.name)}</div>
-          <div class="row-sub">${esc(t.artists.map(a=>a.name).join(', '))}</div>
-        </button>
-        <button class="row-add">Queue</button>`;
-      row.querySelector('.row-text').onclick = async () => {
-        await api('/me/player/play', { method:'PUT', body: JSON.stringify({ uris:[t.uri] }) });
-        closeSheets();
-        st.pos = 0;
-        setTimeout(poll, 500);
-      };
-      row.querySelector('.row-add').onclick = async () => {
-        await api(`/me/player/queue?uri=${encodeURIComponent(t.uri)}`, {method:'POST'});
-        toast('Queued · ' + t.name);
-        loadQueue();
-      };
-      $('results').appendChild(row);
-    });
-  }, 320);
+  if(!q){ searchSeq++; note('Type to search'); return; }
+  searchT = setTimeout(() => runSearch(q), 300);
 });
-const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+$('q').addEventListener('keydown', e => {
+  if(e.key === 'Enter'){
+    clearTimeout(searchT);
+    const q = e.target.value.trim();
+    if(q) runSearch(q);
+  }
+});
 
 /* ---------- devices ---------- */
 async function loadDevices(){
-  const d = await api('/me/player/devices');
-  const list = d?.devices || [];
+  $('devices').innerHTML = '<div class="note">Looking for devices</div>';
+  const r = await api('/me/player/devices');
+  if(!r.ok){ $('devices').innerHTML = '<div class="note bad">' + esc(r.msg) + '</div>'; return; }
+  const list = (r.data && r.data.devices) || [];
   if(!list.length){
-    $('devices').innerHTML = '<div class="empty">No devices. Open Spotify and play a second of anything, then reopen this.</div>';
+    $('devices').innerHTML = '<div class="note">No devices found.<br>Open Spotify, play a second of anything, then reopen this.</div>';
     return;
   }
   $('devices').innerHTML = '';
   list.forEach(dev => {
     const row = document.createElement('button');
     row.className = 'row' + (dev.is_active ? ' active' : '');
-    row.innerHTML = `
-      <div class="row-text">
-        <div class="row-title">${esc(dev.name)}</div>
-        <div class="row-sub">${esc(dev.type)}${dev.is_active ? ' · playing here' : ''}</div>
-      </div>`;
+    row.innerHTML = '<div class="row-text">' +
+        '<div class="row-title">' + esc(dev.name) + '</div>' +
+        '<div class="row-sub">' + esc(dev.type) + (dev.is_active ? ' · playing here' : '') + '</div>' +
+      '</div>';
     row.onclick = async () => {
-      await api('/me/player', { method:'PUT', body: JSON.stringify({ device_ids:[dev.id], play:st.playing }) });
-      toast('Sent to ' + dev.name);
-      closeSheets();
-      setTimeout(poll, 700);
+      const res = await api('/me/player', { method:'PUT', body: JSON.stringify({ device_ids:[dev.id], play: st.playing }) });
+      toast(res.ok ? 'Sent to ' + dev.name : res.msg);
+      if(res.ok) closeSheets();
+      setTimeout(poll, 800);
     };
     $('devices').appendChild(row);
   });
@@ -923,35 +902,16 @@ async function loadDevices(){
 
 /* ---------- queue ---------- */
 async function loadQueue(){
-  const d = await api('/me/player/queue');
-  const list = (d?.queue || []).slice(0, 12);
-  if(!list.length){ $('queue').innerHTML = '<div class="empty">Nothing queued</div>'; return; }
+  $('queue').innerHTML = '<div class="note">Loading</div>';
+  const r = await api('/me/player/queue');
+  if(!r.ok){ $('queue').innerHTML = '<div class="note bad">' + esc(r.msg) + '</div>'; return; }
+  const list = ((r.data && r.data.queue) || []).slice(0, 20);
+  if(!list.length){ $('queue').innerHTML = '<div class="note">Nothing queued</div>'; return; }
   $('queue').innerHTML = '';
-  list.forEach(t => {
-    const row = document.createElement('div');
-    row.className = 'row';
-    const img = t.album?.images?.[2]?.url || '';
-    row.innerHTML = `
-      <img src="${img}" alt="">
-      <div class="row-text">
-        <div class="row-title">${esc(t.name)}</div>
-        <div class="row-sub">${esc((t.artists||[]).map(a=>a.name).join(', '))}</div>
-      </div>`;
-    $('queue').appendChild(row);
-  });
+  list.forEach(t => $('queue').appendChild(trackRow(t, false)));
 }
 
-/* ---------- skins ---------- */
-document.querySelectorAll('.skin-opt').forEach(b => {
-  b.onclick = () => {
-    const skin = b.dataset.skin;
-    document.body.dataset.skin = skin;
-    S.skin = skin;
-    document.querySelectorAll('.skin-opt').forEach(x => x.classList.toggle('on', x === b));
-  };
-});
-
-/* ---------- logout ---------- */
+/* ---------- exit ---------- */
 $('btn-logout').onclick = () => { S.clear(); location.href = REDIRECT; };
 
 /* =========================================================================
@@ -964,7 +924,7 @@ function showGate(mode, err){
   $('login').style.display      = mode === 'login' ? 'block' : 'none';
   $('uri-out').textContent      = REDIRECT;
   $('gate-copy').textContent = mode === 'setup'
-    ? 'One-time setup. Make a Spotify app, add the redirect URI below, paste the Client ID.'
+    ? 'One-time setup. Add the redirect URI below to your Spotify app, then paste the Client ID.'
     : 'A private remote for Spotify. Your player, your colors, your rules.';
   if(err){ $('gate-err').style.display = 'block'; $('gate-err').textContent = err; }
 }
@@ -972,8 +932,6 @@ function showGate(mode, err){
 function enterApp(){
   $('gate').classList.add('hide');
   $('app').setAttribute('aria-hidden','false');
-  document.body.dataset.skin = S.skin;
-  document.querySelectorAll('.skin-opt').forEach(x => x.classList.toggle('on', x.dataset.skin === S.skin));
   poll();
   setInterval(poll, 2000);
   setInterval(tick, 250);
@@ -985,17 +943,16 @@ $('save-cid').onclick = () => {
   S.cid = v;
   showGate('login');
 };
-$('login').onclick = () => login().catch(e => showGate('login', e.message));
+$('login').onclick = () => { login().catch(e => showGate('login', e.message)); };
 
 (async function boot(){
   const params = new URLSearchParams(location.search);
 
   if(params.get('error')){
-    showGate('login', 'Spotify said: ' + params.get('error'));
     history.replaceState({}, '', REDIRECT);
+    showGate('login', 'Spotify said: ' + params.get('error'));
     return;
   }
-
   if(params.get('code')){
     try{
       await exchange(params.get('code'));
@@ -1007,9 +964,7 @@ $('login').onclick = () => login().catch(e => showGate('login', e.message));
     }
     return;
   }
-
   if(!S.cid){ showGate('setup'); return; }
-
   if(S.ref){
     try{ await refresh(); enterApp(); return; }
     catch(e){ S.clear(); }
