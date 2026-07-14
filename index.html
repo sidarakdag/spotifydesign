@@ -710,6 +710,7 @@ async function poll(){
       img.src = url;
     }
     document.title = it.name + ' — Nocturne';
+    capture(it);        // anything that plays is yours forever
   }
 }
 
@@ -812,8 +813,10 @@ $('btn-search').onclick = () => { openSheet('sheet-search'); loadLibrary(false);
 $('btn-queue').onclick  = () => { openSheet('sheet-queue'); loadQueue(); };
 $('btn-device').onclick = () => { openSheet('sheet-device'); loadDevices(); };
 
-/* ---------- shared row (takes a normalized track) ---------- */
-function trackRow(t, withQueue){
+/* ---------- shared row (takes a normalized track) ----------
+   `context` is the list the track came from. Playing with the rest of the
+   list as context is what gives Next something to skip to. */
+function trackRow(t, withQueue, context){
   const row = document.createElement('div');
   row.className = 'row';
 
@@ -827,7 +830,12 @@ function trackRow(t, withQueue){
   btn.innerHTML = '<div class="row-title">' + esc(t.n) + '</div>' +
                   '<div class="row-sub">' + esc(t.a) + '</div>';
   btn.onclick = async () => {
-    const r = await api('/me/player/play', { method:'PUT', body: JSON.stringify({ uris:[t.uri] }) });
+    let uris = [t.uri];
+    if(context && context.length){
+      const i = context.findIndex(x => x.id === t.id);
+      if(i >= 0) uris = context.slice(i, i + 50).map(x => x.uri);
+    }
+    const r = await api('/me/player/play', { method:'PUT', body: JSON.stringify({ uris: uris }) });
     if(!r.ok){ toast(r.msg); return; }
     closeSheets();
     st.pos = 0;
@@ -1054,7 +1062,20 @@ function render(q){
   }
 
   if(!list.length){
-    note('Nothing in your library matches "' + q + '"');
+    results.innerHTML = '';
+    const miss = document.createElement('div');
+    miss.className = 'note';
+    miss.innerHTML = 'Not in your library yet.<br>Play it once in Spotify and it lands here for good.';
+    results.appendChild(miss);
+
+    const jump = document.createElement('a');
+    jump.className = 'gate-btn';
+    jump.style.cssText = 'display:block;width:fit-content;margin:0 auto;text-decoration:none;';
+    jump.href = 'https://open.spotify.com/search/' + encodeURIComponent(q);
+    jump.target = '_blank';
+    jump.rel = 'noopener';
+    jump.textContent = 'Find "' + q + '" in Spotify';
+    results.appendChild(jump);
     return;
   }
 
@@ -1067,11 +1088,38 @@ function render(q){
     : LIB.length + ' tracks indexed';
   results.appendChild(head);
 
-  list.forEach(t => results.appendChild(trackRow(t, true)));
+  list.forEach(t => results.appendChild(trackRow(t, true, list)));
 }
 
 $('q').addEventListener('input', e => { render(e.target.value.trim()); });
 $('btn-reload').onclick = () => { loadLibrary(true); };
+
+/* ---------- keep everything you ever play ----------
+   Spotify only remembers the last 50 plays. Our cache doesn't have to. */
+function capture(rawTrack){
+  const n = norm(rawTrack);
+  if(!n) return false;
+  if(LIB.some(t => t.id === n.id)) return false;
+  LIB.unshift(n);
+  saveCache();
+  if($('sheet-search').classList.contains('open') && libLoaded) render($('q').value.trim());
+  return true;
+}
+
+async function harvest(){
+  const r = await api('/me/player/recently-played?limit=50');
+  if(!r.ok) return;
+  const ids = new Set(LIB.map(t => t.id));
+  let added = 0;
+  ((r.data && r.data.items) || []).forEach(i => {
+    const n = norm(i.track);
+    if(n && !ids.has(n.id)){ ids.add(n.id); LIB.push(n); added++; }
+  });
+  if(added){
+    saveCache();
+    if($('sheet-search').classList.contains('open') && libLoaded) render($('q').value.trim());
+  }
+}
 
 /* ---------- devices ---------- */
 async function loadDevices(){
@@ -1133,9 +1181,17 @@ function showGate(mode, err){
 function enterApp(){
   $('gate').classList.add('hide');
   $('app').setAttribute('aria-hidden','false');
+
+  // warm the index from cache so capture() appends instead of clobbering
+  const cached = readCache();
+  if(cached){ LIB = cached; libLoaded = true; }
+
   poll();
   setInterval(poll, 2000);
   setInterval(tick, 250);
+
+  harvest();
+  setInterval(harvest, 120000);
 }
 
 $('save-cid').onclick = () => {
