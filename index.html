@@ -43,6 +43,16 @@
 
   /* ---------- ambient ---------- */
   #field{position:fixed;inset:0;z-index:0;display:block;}
+  #artbg{
+    position:fixed;inset:-8%;z-index:-2;pointer-events:none;
+    background-position:center;background-size:cover;background-repeat:no-repeat;
+    filter:blur(60px) saturate(1.5) brightness(.7);
+    opacity:0;transform:scale(1.1);
+    transition:opacity 1s ease, background-image .6s ease;
+  }
+  #artbg.on{opacity:.5;}
+  #artbg::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 40%, transparent 20%, #000 95%);}
+  body.has-photo #artbg{display:none;}
   #photo{
     position:fixed;inset:0;z-index:-1;pointer-events:none;
     background-position:center;background-size:cover;background-repeat:no-repeat;
@@ -101,16 +111,33 @@
 
   /* ---------- now playing ---------- */
   .stage{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;gap:26px;min-height:0;padding:8px 0;}
-  .art-wrap{display:flex;justify-content:center;flex:0 1 auto;min-height:0;}
+  .art-wrap{display:flex;justify-content:center;flex:0 1 auto;min-height:0;perspective:1200px;}
   .art{
     position:relative;width:min(74vw,300px);aspect-ratio:1;flex:0 0 auto;
-    border-radius:4px;overflow:hidden;
-    box-shadow:0 30px 90px -20px color-mix(in srgb, var(--accent) 50%, transparent),
-               0 2px 0 0 rgba(255,255,255,.04) inset;
+    transform-style:preserve-3d;cursor:pointer;
+    transform:scale(calc(.94 + var(--pulse,0) * .018)) rotateY(0deg);
     transition:transform .7s cubic-bezier(.22,1,.36,1);
   }
-  .art img{width:100%;height:100%;object-fit:cover;display:block;}
-  body.paused .art{transform:scale(.94);}
+  body:not(.paused) .art{transform:scale(calc(1 + var(--pulse,0) * .022)) rotateY(0deg);}
+  .art.flipped{transform:rotateY(180deg) !important;}
+  .art-face{
+    position:absolute;inset:0;border-radius:4px;overflow:hidden;
+    -webkit-backface-visibility:hidden;backface-visibility:hidden;
+    box-shadow:0 30px 90px -20px color-mix(in srgb, var(--accent) 50%, transparent),
+               0 2px 0 0 rgba(255,255,255,.04) inset;
+  }
+  .art-front img{width:100%;height:100%;object-fit:cover;display:block;}
+  .art-back{
+    transform:rotateY(180deg);
+    background:linear-gradient(150deg, color-mix(in srgb, var(--accent) 30%, #0A0A10), #050508);
+    display:grid;place-items:center;padding:26px;text-align:center;
+    border:1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+  .art-back-inner{display:flex;flex-direction:column;gap:8px;}
+  .ab-title{font-family:var(--font-display);font-size:clamp(20px,5.5vw,28px);line-height:1.15;color:var(--bone);}
+  .ab-artist{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--bone);opacity:.85;}
+  .ab-album{font-size:11px;letter-spacing:.1em;color:var(--ash);margin-top:6px;}
+  .ab-hint{font-family:var(--font-mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--ash);margin-top:18px;opacity:.6;}
 
   .meta{text-align:center;padding:0 4px;}
   .title{
@@ -125,7 +152,7 @@
 
   /* ---------- scrubber ---------- */
   .scrub{display:flex;flex-direction:column;gap:0;}
-  #dancers{display:block;width:100%;height:30px;margin-bottom:-2px;}
+  #cat{display:block;width:100%;height:40px;margin-bottom:-4px;}
   .track{position:relative;height:24px;display:flex;align-items:center;cursor:pointer;touch-action:none;}
   .track::before{content:"";position:absolute;left:0;right:0;height:2px;background:var(--rule);border-radius:2px;}
   .fill{
@@ -295,12 +322,13 @@
     35%{opacity:1;}
     100%{transform:translateX(100%);opacity:0;}
   }
-  .art.swap img{animation:artIn .85s cubic-bezier(.22,1,.36,1) both;}
-  .art.swap::after{
+  .art.swap .art-front img{animation:artIn .85s cubic-bezier(.22,1,.36,1) both;}
+  .art.swap .art-front::after{
     content:"";position:absolute;inset:0;z-index:3;pointer-events:none;
     background:linear-gradient(100deg, transparent 20%, color-mix(in srgb, var(--accent) 55%, transparent) 50%, transparent 80%);
     animation:sweep .9s cubic-bezier(.4,0,.2,1) both;
   }
+  .art-front{position:relative;}
   .title.swap{animation:riseIn .6s cubic-bezier(.22,1,.36,1) both;}
   .artist.swap{animation:riseIn .6s cubic-bezier(.22,1,.36,1) .07s both;}
 
@@ -336,6 +364,7 @@
 <body class="paused">
 
 <canvas id="field"></canvas>
+<div id="artbg"></div>
 <div id="photo"></div>
 <div id="bloom"></div>
 <div id="grain"></div>
@@ -370,18 +399,28 @@
 
   <main class="stage">
     <div class="art-wrap">
-      <div class="art">
-        <img id="art" alt="" crossorigin="anonymous" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'/>">
+      <div class="art" id="art-card">
+        <div class="art-face art-front">
+          <img id="art" alt="" crossorigin="anonymous" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'/>">
+        </div>
+        <div class="art-face art-back">
+          <div class="art-back-inner">
+            <div class="ab-title" id="ab-title">—</div>
+            <div class="ab-artist" id="ab-artist">—</div>
+            <div class="ab-album" id="ab-album">—</div>
+            <div class="ab-hint">tap to flip back</div>
+          </div>
+        </div>
       </div>
     </div>
 
     <div class="meta">
       <h1 class="title" id="title">Nothing playing</h1>
-      <p class="artist" id="artist">Open Spotify, play a second of anything, come back</p>
+      <p class="artist" id="artist">Hit play to start something</p>
     </div>
 
     <div class="scrub">
-      <canvas id="dancers" aria-hidden="true"></canvas>
+      <canvas id="cat" aria-hidden="true"></canvas>
       <div class="track" id="seek" role="slider" aria-label="Seek" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
         <div class="fill" id="fill" style="width:0%"></div>
         <div class="head" id="head" style="left:0%"></div>
@@ -650,7 +689,7 @@ function toast(msg){
 /* =========================================================================
    COLOR — the interface takes its color from the record
    ========================================================================= */
-/* live palette, shared by the particle field and the dancers */
+/* live palette, shared by the particle field and the cat */
 const ACC = { h1:232, s1:.62, l1:.68, h2:330, s2:.72, l2:.70 };
 
 const swatch = document.createElement('canvas');
@@ -837,37 +876,57 @@ async function poll(){
     st.id = it.id;
     $('title').textContent  = it.name;
     $('artist').textContent = (it.artists || []).map(a => a.name).join(', ');
+    const albumName = (it.album && it.album.name) || '';
+    $('ab-title').textContent  = it.name;
+    $('ab-artist').textContent = (it.artists || []).map(a => a.name).join(', ');
+    $('ab-album').textContent  = albumName;
     const url = it.album && it.album.images && it.album.images[0] && it.album.images[0].url;
     if(url){
       const img = $('art');
       img.onload = function(){ extract(img); };
       img.src = url;
+      const bg = $('artbg');
+      bg.style.backgroundImage = 'url("' + url + '")';
+      bg.classList.add('on');
     }
     document.title = it.name + ' — Nocturne';
-    if(!first) swapAnim();
+    if(!first){ swapAnim(); buzz(12); }
     capture(it);        // anything that plays is yours forever
   }
 }
 
 /* =========================================================================
-   DANCERS — a little crowd standing on the timeline.
-   Those the playhead has passed are lit in the album's colors and dancing.
-   Those ahead of it are dark and still, waiting their turn.
+   BEAT — we can't hear Spotify's audio, so we fake a steady musical pulse.
+   BEAT.v swings 0..1 on each beat while playing, eases to rest when paused.
+   Drives the album-art breathing and the cat's fur.
+   ========================================================================= */
+const BEAT = { v: 0, bpm: 120 };
+(function beatClock(){
+  let last = performance.now();
+  let phase = 0;
+  function loop(now){
+    const dt = (now - last) / 1000; last = now;
+    const target = st.playing ? 1 : 0;
+    // advance the beat phase at the current tempo while playing
+    if(st.playing) phase += dt * (BEAT.bpm / 60) * Math.PI * 2;
+    // a sharp attack, soft decay pulse shape
+    const raw = st.playing ? Math.pow(Math.max(0, Math.sin(phase)), 0.55) : 0;
+    BEAT.v += (raw * target - BEAT.v) * Math.min(1, dt * 12);
+    document.documentElement.style.setProperty('--pulse', BEAT.v.toFixed(3));
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+
+/* =========================================================================
+   CAT — sits on the timeline riding the playhead, fur puffing on the beat.
+   Colored by the album art. Curls up and sleeps when paused.
    ========================================================================= */
 const D = (function(){
-  const cv = $('dancers');
+  const cv = $('cat');
   const ctx = cv.getContext('2d');
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const COUNT = 9;
-  let w = 0, h = 30, dpr = 1, t = 0, raf = null;
-
-  const crowd = Array.from({length:COUNT}, (_, i) => ({
-    seat: (i + 0.5) / COUNT,           // where they stand, 0..1 along the bar
-    phase: Math.random() * Math.PI * 2,
-    speed: 0.9 + Math.random() * 0.5,
-    tall:  0.86 + Math.random() * 0.28,
-    warm:  i % 2 === 0                 // alternate between the two album colors
-  }));
+  let w = 0, h = 40, dpr = 1, t = 0, raf = null;
 
   function size(){
     const r = cv.getBoundingClientRect();
@@ -879,97 +938,108 @@ const D = (function(){
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  function figure(x, ground, d, energy, color){
-    const s = d.tall;
-    const beat = Math.sin(t * d.speed + d.phase);
-    const beat2 = Math.sin(t * d.speed * 2 + d.phase);
-
-    const bob = beat * 2.2 * energy;
-    const lean = beat2 * 0.16 * energy;
-
-    const hipY   = ground - 8 * s + bob;
-    const headY  = ground - 19 * s + bob;
-    const shldY  = ground - 15 * s + bob;
-
-    ctx.save();
-    ctx.translate(x, 0);
-    ctx.rotate(lean * 0.12);
-    ctx.translate(-x, 0);
+  function drawCat(x, ground, puff, live, color, dim){
+    const s = 1;                     // base scale
+    const bob = puff * 2.4;          // whole body lifts a touch on the beat
+    const cy = ground - bob;
 
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = 1.7;
     ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
 
-    // head
+    // ---- tail: sways with time, flicks up with the beat ----
     ctx.beginPath();
-    ctx.arc(x, headY, 2.5 * s, 0, 6.2832);
-    ctx.fill();
-
-    // spine
-    ctx.beginPath();
-    ctx.moveTo(x, headY + 2.6 * s);
-    ctx.lineTo(x, hipY);
+    const tailBase = x - 9 * s;
+    const sway = Math.sin(t * 2) * 3;
+    ctx.moveTo(tailBase, cy - 1);
+    ctx.quadraticCurveTo(
+      tailBase - 6, cy - 4 - puff * 3,
+      tailBase - 5 + sway, cy - 11 - puff * 6
+    );
     ctx.stroke();
 
-    // arms — thrown up when the energy is high
-    const armLift = energy * (0.8 + beat * 0.6);
+    // ---- body: a low crouched arc ----
     ctx.beginPath();
-    ctx.moveTo(x, shldY);
-    ctx.lineTo(x - 5 * s, shldY - 5 * armLift + beat2 * 1.5);
-    ctx.moveTo(x, shldY);
-    ctx.lineTo(x + 5 * s, shldY - 5 * armLift - beat2 * 1.5);
+    ctx.moveTo(x - 9 * s, cy);
+    ctx.quadraticCurveTo(x - 4 * s, cy - 8 * s, x, cy - 8 * s);
+    ctx.quadraticCurveTo(x + 6 * s, cy - 8 * s, x + 8 * s, cy - 1 * s);
     ctx.stroke();
 
-    // legs
-    const step = beat * 2.4 * energy;
+    // ---- fur: spikes along the back that stand up on the beat ----
+    const spikes = 7;
+    ctx.lineWidth = 1.1;
+    for(let i = 0; i < spikes; i++){
+      const f = i / (spikes - 1);
+      const bx = x - 8 * s + f * 15 * s;
+      // arc height of the back at this point
+      const by = cy - 8 * s + Math.pow(Math.abs(f - 0.5) * 2, 2) * 5;
+      const up = (2 + puff * 6) * (0.5 + 0.5 * Math.sin(f * 6 + t * 3));
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx - 0.5, by - up);
+      ctx.stroke();
+    }
+    ctx.lineWidth = 1.7;
+
+    // ---- head: circle at the front-right ----
+    const hx = x + 9 * s, hy = cy - 4 * s;
     ctx.beginPath();
-    ctx.moveTo(x, hipY);
-    ctx.lineTo(x - 3 * s - step, ground);
-    ctx.moveTo(x, hipY);
-    ctx.lineTo(x + 3 * s + step, ground);
+    ctx.arc(hx, hy, 4 * s, 0, 6.2832);
     ctx.stroke();
 
-    ctx.restore();
+    // ---- ears: two triangles, perk up on the beat ----
+    const ear = 2.5 + puff * 2.5;
+    ctx.beginPath();
+    ctx.moveTo(hx - 2.5, hy - 3); ctx.lineTo(hx - 3, hy - 3 - ear); ctx.lineTo(hx - 0.6, hy - 3.4);
+    ctx.moveTo(hx + 2.5, hy - 3); ctx.lineTo(hx + 3, hy - 3 - ear); ctx.lineTo(hx + 0.6, hy - 3.4);
+    ctx.stroke();
+
+    // ---- legs: little standing lines ----
+    ctx.beginPath();
+    ctx.moveTo(x - 5 * s, cy - 1); ctx.lineTo(x - 5 * s, ground);
+    ctx.moveTo(x + 5 * s, cy - 1); ctx.lineTo(x + 5 * s, ground);
+    ctx.stroke();
+
+    // ---- eye: a bright dot open when awake, closed when asleep ----
+    if(live){
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(hx + 1.5, hy - 0.5, 0.9, 0, 6.2832);
+      ctx.fill();
+    }else{
+      ctx.beginPath();
+      ctx.moveTo(hx, hy); ctx.lineTo(hx + 3, hy);   // closed eye
+      ctx.stroke();
+    }
   }
 
   function frame(){
     raf = requestAnimationFrame(frame);
     if(!w){ size(); return; }
 
-    t += 0.055;
+    t += 0.03;
     ctx.clearRect(0, 0, w, h);
 
-    const ground = h - 2;
+    const ground = h - 3;
     const prog = st.dur ? st.pos / st.dur : 0;
     const live = st.playing;
+    const x = 10 + prog * (w - 20);       // the cat rides the playhead
 
-    for(const d of crowd){
-      const x = 4 + d.seat * (w - 8);
-      const passed = d.seat <= prog;
+    const puff = live ? BEAT.v : 0;
 
-      // energy peaks right at the playhead and falls off behind it
-      const near = 1 - Math.min(1, Math.abs(d.seat - prog) * 5);
-      let energy = passed ? (0.45 + near * 0.55) : 0;
-      if(!live) energy *= 0.12;
+    // color from album art, dimming to grey when asleep
+    const hue = ACC.h1, sat = ACC.s1 * 100, lit = Math.min(72, ACC.l1 * 100 + 6);
+    const color = live
+      ? 'hsl(' + hue.toFixed(0) + ' ' + sat.toFixed(0) + '% ' + lit.toFixed(0) + '% / 0.95)'
+      : 'rgba(138,138,150,0.4)';
 
-      let color;
-      if(passed){
-        const hue = d.warm ? ACC.h1 : ACC.h2;
-        const sat = (d.warm ? ACC.s1 : ACC.s2) * 100;
-        const lit = (d.warm ? ACC.l1 : ACC.l2) * 100;
-        const alpha = 0.55 + near * 0.45;
-        color = 'hsl(' + hue.toFixed(0) + ' ' + sat.toFixed(0) + '% ' + lit.toFixed(0) + '% / ' + alpha.toFixed(2) + ')';
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 8 * near * (live ? 1 : 0.2);
-      }else{
-        color = 'rgba(138,138,150,0.26)';
-        ctx.shadowBlur = 0;
-      }
+    ctx.shadowColor = 'hsl(' + hue.toFixed(0) + ' ' + sat.toFixed(0) + '% ' + lit.toFixed(0) + '%)';
+    ctx.shadowBlur = live ? 6 + puff * 8 : 0;
 
-      figure(x, ground, d, energy, color);
-      ctx.shadowBlur = 0;
-    }
+    drawCat(x, ground, puff, live, color);
+    ctx.shadowBlur = 0;
   }
 
   addEventListener('resize', size);
@@ -985,33 +1055,116 @@ const D = (function(){
 })();
 
 /* =========================================================================
+   DEVICE HANDLING
+   Spotify won't accept commands until a device is *active*. If nothing is
+   playing, we find the phone, transfer playback to it, and retry.
+   ========================================================================= */
+let activeDeviceId = null;
+
+async function ensureDevice(){
+  const r = await api('/me/player/devices');
+  if(!r.ok) return null;
+
+  const list = (r.data && r.data.devices) || [];
+  if(!list.length) return null;
+
+  const dev = list.find(d => d.is_active)
+           || list.find(d => d.type === 'Smartphone')
+           || list[0];
+
+  if(!dev.is_active){
+    await api('/me/player', { method:'PUT', body: JSON.stringify({ device_ids:[dev.id], play:false }) });
+    await new Promise(res => setTimeout(res, 450));   // give Spotify a beat to wake up
+  }
+  activeDeviceId = dev.id;
+  return dev.id;
+}
+
+function withDevice(path, id){
+  return path + (path.indexOf('?') >= 0 ? '&' : '?') + 'device_id=' + id;
+}
+
+const NO_DEVICE = 'Open the Spotify app once, then try again';
+
+/* every playback command goes through here */
+async function control(path, opts){
+  let r = await api(path, opts);
+  if(r.ok || r.status !== 404) return r;
+
+  const id = await ensureDevice();
+  if(!id) return { ok:false, status:404, data:null, msg:NO_DEVICE };
+
+  return api(withDevice(path, id), opts);
+}
+
+/* nothing playing at all — start something from the library */
+async function startFresh(){
+  const id = await ensureDevice();
+  if(!id){ toast(NO_DEVICE); return false; }
+
+  if(!LIB.length){
+    const r = await api(withDevice('/me/player/play', id), { method:'PUT' });
+    if(!r.ok) toast('Open Search once to build your library, then hit play');
+    return r.ok;
+  }
+
+  const start = Math.floor(Math.random() * LIB.length);
+  let uris = LIB.slice(start, start + 50).map(t => t.uri);
+  if(uris.length < 50) uris = uris.concat(LIB.slice(0, 50 - uris.length).map(t => t.uri));
+
+  const r = await api(withDevice('/me/player/play', id), {
+    method:'PUT',
+    body: JSON.stringify({ uris: uris })
+  });
+  if(!r.ok){ toast(r.msg); return false; }
+  st.pos = 0;
+  setTimeout(poll, 600);
+  return true;
+}
+
+/* =========================================================================
    CONTROLS
    ========================================================================= */
 $('btn-play').onclick = async () => {
+  buzz(10);
+  // nothing loaded at all — kick something off rather than resuming silence
+  if(!st.id && !st.playing){
+    setPlayIcon(true);
+    const ok = await startFresh();
+    if(!ok) setPlayIcon(false);
+    return;
+  }
+
   const next = !st.playing;
   st.playing = next;
   setPlayIcon(next);
-  const r = await api(next ? '/me/player/play' : '/me/player/pause', { method:'PUT' });
-  if(!r.ok) toast(r.msg);
+  const r = await control(next ? '/me/player/play' : '/me/player/pause', { method:'PUT' });
+  if(!r.ok){
+    toast(r.msg);
+    st.playing = !next;
+    setPlayIcon(!next);
+  }
   setTimeout(poll, 300);
 };
 $('btn-next').onclick = async () => {
-  const r = await api('/me/player/next', { method:'POST' });
+  buzz(8);
+  const r = await control('/me/player/next', { method:'POST' });
   if(!r.ok) toast(r.msg);
   st.pos = 0;
   setTimeout(poll, 450);
 };
 $('btn-prev').onclick = async () => {
+  buzz(8);
   let r;
-  if(st.pos > 4000){ st.pos = 0; r = await api('/me/player/seek?position_ms=0', { method:'PUT' }); }
-  else { r = await api('/me/player/previous', { method:'POST' }); st.pos = 0; }
+  if(st.pos > 4000){ st.pos = 0; r = await control('/me/player/seek?position_ms=0', { method:'PUT' }); }
+  else { r = await control('/me/player/previous', { method:'POST' }); st.pos = 0; }
   if(!r.ok) toast(r.msg);
   setTimeout(poll, 450);
 };
 $('btn-shuffle').onclick = async () => {
   st.shuffle = !st.shuffle;
   $('btn-shuffle').classList.toggle('on', st.shuffle);
-  const r = await api('/me/player/shuffle?state=' + st.shuffle, { method:'PUT' });
+  const r = await control('/me/player/shuffle?state=' + st.shuffle, { method:'PUT' });
   if(!r.ok) toast(r.msg);
 };
 $('btn-repeat').onclick = async () => {
@@ -1019,7 +1172,7 @@ $('btn-repeat').onclick = async () => {
   st.repeat = order[(order.indexOf(st.repeat) + 1) % 3];
   $('btn-repeat').classList.toggle('on', st.repeat !== 'off');
   $('repeat-dot').style.display = st.repeat === 'track' ? 'block' : 'none';
-  const r = await api('/me/player/repeat?state=' + st.repeat, { method:'PUT' });
+  const r = await control('/me/player/repeat?state=' + st.repeat, { method:'PUT' });
   if(!r.ok) toast(r.msg);
 };
 
@@ -1044,7 +1197,7 @@ function draggable(el, onMove, onEnd){
 draggable($('seek'),
   p => { st.seeking = true; st.pos = p * st.dur; paint(); },
   async () => {
-    const r = await api('/me/player/seek?position_ms=' + Math.round(st.pos), { method:'PUT' });
+    const r = await control('/me/player/seek?position_ms=' + Math.round(st.pos), { method:'PUT' });
     if(!r.ok) toast(r.msg);
     setTimeout(() => { st.seeking = false; }, 500);
   }
@@ -1058,7 +1211,7 @@ draggable($('vol'),
     $('vol-fill').style.width = st.vol + '%';
     $('vol').setAttribute('aria-valuenow', st.vol);
     clearTimeout(volT);
-    volT = setTimeout(() => api('/me/player/volume?volume_percent=' + st.vol, { method:'PUT' }), 200);
+    volT = setTimeout(() => control('/me/player/volume?volume_percent=' + st.vol, { method:'PUT' }), 200);
   },
   () => { setTimeout(() => { volDrag = false; }, 700); }
 );
@@ -1113,7 +1266,7 @@ function trackRow(t, withQueue, context){
         if(uris.length < 50) uris = uris.concat(pool.slice(0, 50 - uris.length).map(x => x.uri));
       }
     }
-    const r = await api('/me/player/play', { method:'PUT', body: JSON.stringify({ uris: uris }) });
+    const r = await control('/me/player/play', { method:'PUT', body: JSON.stringify({ uris: uris }) });
     if(!r.ok){ toast(r.msg); return; }
     closeSheets();
     st.pos = 0;
@@ -1128,7 +1281,7 @@ function trackRow(t, withQueue, context){
     add.className = 'row-add';
     add.textContent = 'Queue';
     add.onclick = async () => {
-      const r = await api('/me/player/queue?uri=' + encodeURIComponent(t.uri), { method:'POST' });
+      const r = await control('/me/player/queue?uri=' + encodeURIComponent(t.uri), { method:'POST' });
       toast(r.ok ? 'Queued · ' + t.n : r.msg);
     };
     row.appendChild(add);
@@ -1405,10 +1558,28 @@ async function loadDevices(){
   const r = await api('/me/player/devices');
   if(!r.ok){ $('devices').innerHTML = '<div class="note bad">' + esc(r.msg) + '</div>'; return; }
   const list = (r.data && r.data.devices) || [];
+
   if(!list.length){
-    $('devices').innerHTML = '<div class="note">No devices found.<br>Open Spotify, play a second of anything, then reopen this.</div>';
+    $('devices').innerHTML = '';
+    const msg = document.createElement('div');
+    msg.className = 'note';
+    msg.innerHTML = 'No devices. Spotify is fully closed,<br>so there is nothing to send music to.';
+    $('devices').appendChild(msg);
+
+    const open = document.createElement('a');
+    open.className = 'gate-btn';
+    open.style.cssText = 'display:block;width:fit-content;margin:0 auto;text-decoration:none;';
+    open.href = 'spotify://';
+    open.textContent = 'Open Spotify';
+    $('devices').appendChild(open);
+
+    const hint = document.createElement('div');
+    hint.className = 'note';
+    hint.textContent = 'Then come back — no need to press play there.';
+    $('devices').appendChild(hint);
     return;
   }
+
   $('devices').innerHTML = '';
   list.forEach(dev => {
     const row = document.createElement('button');
@@ -1419,8 +1590,8 @@ async function loadDevices(){
       '</div>';
     row.onclick = async () => {
       const res = await api('/me/player', { method:'PUT', body: JSON.stringify({ device_ids:[dev.id], play: st.playing }) });
+      if(res.ok){ activeDeviceId = dev.id; closeSheets(); }
       toast(res.ok ? 'Sent to ' + dev.name : res.msg);
-      if(res.ok) closeSheets();
       setTimeout(poll, 800);
     };
     $('devices').appendChild(row);
@@ -1454,6 +1625,17 @@ function swapAnim(){
   });
   setTimeout(() => targets.forEach(el => el && el.classList.remove('swap')), 1000);
 }
+
+/* ---------- haptics ---------- */
+function buzz(ms){
+  if(navigator.vibrate) { try{ navigator.vibrate(ms); }catch(e){} }
+}
+
+/* ---------- tap the album to flip it ---------- */
+$('art-card').addEventListener('click', () => {
+  $('art-card').classList.toggle('flipped');
+  buzz(8);
+});
 
 /* =========================================================================
    PLAYLISTS
@@ -1498,7 +1680,7 @@ function renderLists(){
     btn.innerHTML = '<div class="row-title">' + esc(pl.name) + '</div>' +
                     '<div class="row-sub">' + count + ' track' + (count === 1 ? '' : 's') + '</div>';
     btn.onclick = async () => {
-      const r = await api('/me/player/play', { method:'PUT', body: JSON.stringify({ context_uri: pl.uri }) });
+      const r = await control('/me/player/play', { method:'PUT', body: JSON.stringify({ context_uri: pl.uri }) });
       if(!r.ok){ toast(r.msg); return; }
       closeSheets();
       st.pos = 0;
@@ -1509,8 +1691,8 @@ function renderLists(){
     shuf.className = 'row-add';
     shuf.textContent = 'Shuffle';
     shuf.onclick = async () => {
-      await api('/me/player/shuffle?state=true', { method:'PUT' });
-      const r = await api('/me/player/play', { method:'PUT', body: JSON.stringify({ context_uri: pl.uri }) });
+      await control('/me/player/shuffle?state=true', { method:'PUT' });
+      const r = await control('/me/player/play', { method:'PUT', body: JSON.stringify({ context_uri: pl.uri }) });
       if(!r.ok){ toast(r.msg); return; }
       st.shuffle = true;
       closeSheets();
