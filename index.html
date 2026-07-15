@@ -2291,10 +2291,31 @@ function enterApp(){
   $('gate').classList.add('hide');
   $('app').setAttribute('aria-hidden','false');
 
+  // report whether the aura figure image loads, so we can diagnose a blank
+  (function(){
+    const f = document.getElementById('aura-figure');
+    if(f){
+      f.addEventListener('error', () => {
+        const d = document.createElement('div');
+        d.textContent = 'aura.png failed to load — check path/filename';
+        d.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99;font:10px monospace;color:#ff6b6b;background:rgba(0,0,0,.8);padding:6px 8px;border-radius:6px;';
+        document.body.appendChild(d);
+        setTimeout(() => d.remove(), 8000);
+      });
+      f.addEventListener('load', () => {
+        const d = document.createElement('div');
+        d.textContent = 'aura.png loaded ' + f.naturalWidth + '×' + f.naturalHeight;
+        d.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99;font:10px monospace;color:#8AA8FF;background:rgba(0,0,0,.8);padding:6px 8px;border-radius:6px;';
+        document.body.appendChild(d);
+        setTimeout(() => d.remove(), 8000);
+      });
+    }
+  })();
+
   // brief version stamp so we can confirm the latest file actually loaded
   (function(){
     const v = document.createElement('div');
-    v.textContent = 'build v11';
+    v.textContent = 'build v12';
     v.style.cssText = 'position:fixed;right:8px;top:calc(var(--safe-t) + 4px);z-index:99;'+
       'font:9px monospace;color:#4C7BFF;opacity:.7;pointer-events:none;';
     document.body.appendChild(v);
