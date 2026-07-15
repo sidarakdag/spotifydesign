@@ -699,6 +699,94 @@
     .art-wrap:hover .art-glare{opacity:0;}
   }
 
+  /* =========================================================================
+     COMPONENT REFINEMENT — same identity, higher craft. Consistent spacing,
+     radii and an elegant layered-shadow scale; softer borders; refined hover,
+     focus, scrollbar, empty and loading states. Colours/theme untouched.
+     ========================================================================= */
+  :root{
+    --s0:4px;                         /* finer step for the 8px system */
+    --r-sm:11px; --r-md:14px; --r-lg:18px; --r-xl:22px;   /* radius scale */
+    /* elegant, layered shadows — soft, never muddy */
+    --sh-1:0 1px 2px rgba(0,0,0,.45);
+    --sh-2:0 4px 16px -6px rgba(0,0,0,.55), 0 1px 2px rgba(0,0,0,.4);
+    --sh-3:0 16px 44px -14px rgba(0,0,0,.7), 0 3px 10px -5px rgba(0,0,0,.5);
+    --line-soft:rgba(255,255,255,.055);
+    --ease-out:cubic-bezier(.22,1,.36,1);
+  }
+
+  /* ---- refined scrollbars (were browser-default in the sheets) ---- */
+  .sheet-body{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;scroll-behavior:smooth;padding-right:2px;}
+  .sheet-body::-webkit-scrollbar{width:9px;height:9px;}
+  .sheet-body::-webkit-scrollbar-track{background:transparent;}
+  .sheet-body::-webkit-scrollbar-thumb{
+    background:rgba(255,255,255,.16);border-radius:99px;
+    border:2px solid transparent;background-clip:padding-box;transition:background .2s;
+  }
+  .sheet-body::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.28);background-clip:padding-box;}
+
+  /* ---- list rows: more breathing room, a rounded hover surface, inset
+         hairlines that don't collide with the artwork, crisp alignment ---- */
+  .sheet-body .row{
+    gap:var(--s2);align-items:center;
+    padding:11px 10px;border-radius:var(--r-md);border-bottom:0;
+    position:relative;transition:background .2s var(--ease-out), transform .18s var(--ease-out);
+  }
+  .sheet-body .row::after{
+    content:"";position:absolute;left:10px;right:10px;bottom:0;height:1px;
+    background:var(--line-soft);
+  }
+  .sheet-body .row:last-child::after{display:none;}
+  .sheet-body .row:hover{background:rgba(255,255,255,.045);}
+  @media (hover:hover){ .sheet-body .row:hover{transform:translateX(3px);} }
+  .sheet-body .row:hover::after{opacity:0;}
+  .sheet-body .row.active{background:rgba(76,123,255,.08);}
+  .row img{width:46px;height:46px;border-radius:var(--r-sm);box-shadow:var(--sh-1), inset 0 0 0 1px var(--line);}
+  .row-title{font-size:14.5px;letter-spacing:-.01em;}
+  .row-sub{font-size:12px;margin-top:3px;}
+  .row-add{padding:8px 13px;transition:color .2s, border-color .25s, background .25s, transform .15s var(--ease-out);}
+  .row-add:hover{background:linear-gradient(180deg, var(--b3), var(--b2));}
+  .row-add:active{transform:scale(.94);}
+
+  /* ---- inputs: airier padding, elegant focus lift ---- */
+  .search-input,.gate-field{padding:14px 16px;border-radius:var(--r-md);transition:border-color .2s var(--ease-out), box-shadow .25s var(--ease-out), background .2s;}
+  .search-input:focus{background:rgba(0,0,0,.5);}
+
+  /* ---- Style-sheet setting rows: even rhythm ---- */
+  .set-row{padding:16px 2px;}
+  .set-row:last-of-type{border-bottom:0;}
+
+  /* ---- sheets: consistent radius + one clean elevation, roomier grabber ---- */
+  .sheet{border-radius:var(--r-xl) var(--r-xl) 0 0;}
+  .sheet::before{width:44px;height:5px;top:10px;background:rgba(255,255,255,.16);}
+  .sheet-close,.row-add{border-radius:var(--r-sm);}
+  .sheet-head h2{letter-spacing:.22em;}
+
+  /* ---- empty + loading states ---- */
+  .note{padding:34px 18px;line-height:1.85;}
+  .note.loading{color:var(--ash);}
+  .note.loading::before{
+    content:"";display:block;width:22px;height:22px;margin:0 auto 16px;border-radius:50%;
+    border:2px solid rgba(255,255,255,.14);border-top-color:var(--blue-soft);
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* ---- softer structural dividers ---- */
+  .rail{border-top-color:var(--line-soft);}
+  .times{margin-top:12px;}
+
+  /* ---- toast: consistent radius + elevation ---- */
+  #toast{border-radius:var(--r-md);padding:11px 18px;box-shadow:var(--sh-3), inset 0 1px 0 var(--edge);}
+
+  /* ---- unified, refined hover lift on the machined controls ---- */
+  @media (hover:hover){
+    .tbtn:hover{transform:translateY(-1px);}
+    .tbtn.big:hover{transform:translateY(-2px) scale(1.02);}
+    .chip:hover{transform:translateY(-1px);}
+    #btn-logout:hover,.sheet-close:hover{transform:translateY(-1px);}
+  }
+
 </style>
 </head>
 <body class="paused">
@@ -819,7 +907,7 @@
     </div>
   </div>
   <input class="search-input" id="q" type="text" placeholder="Filter by song, artist, album" autocomplete="off" autocorrect="off" spellcheck="false">
-  <div class="sheet-body" id="results"><div class="note">Loading your library</div></div>
+  <div class="sheet-body" id="results"><div class="note loading">Loading your library</div></div>
 </div>
 
 <div class="sheet" id="sheet-queue">
@@ -835,7 +923,7 @@
     <h2>Playback output</h2>
     <button class="sheet-close" data-close>Close</button>
   </div>
-  <div class="sheet-body" id="devices"><div class="note">Loading devices</div></div>
+  <div class="sheet-body" id="devices"><div class="note loading">Loading devices</div></div>
 </div>
 
 <div class="sheet" id="sheet-lists">
@@ -843,7 +931,7 @@
     <h2>Your playlists</h2>
     <button class="sheet-close" data-close>Close</button>
   </div>
-  <div class="sheet-body" id="lists"><div class="note">Loading playlists</div></div>
+  <div class="sheet-body" id="lists"><div class="note loading">Loading playlists</div></div>
 </div>
 
 <div class="sheet" id="sheet-style">
@@ -2442,7 +2530,7 @@ async function harvest(){
 
 /* ---------- devices ---------- */
 async function loadDevices(){
-  $('devices').innerHTML = '<div class="note">Looking for devices</div>';
+  $('devices').innerHTML = '<div class="note loading">Looking for devices</div>';
   const r = await api('/me/player/devices');
   if(!r.ok){ $('devices').innerHTML = '<div class="note bad">' + esc(r.msg) + '</div>'; return; }
   const list = (r.data && r.data.devices) || [];
@@ -2488,7 +2576,7 @@ async function loadDevices(){
 
 /* ---------- queue ---------- */
 async function loadQueue(){
-  $('queue').innerHTML = '<div class="note">Loading</div>';
+  $('queue').innerHTML = '<div class="note loading">Loading</div>';
   const r = await api('/me/player/queue');
   if(!r.ok){ $('queue').innerHTML = '<div class="note bad">' + esc(r.msg) + '</div>'; return; }
   const list = ((r.data && r.data.queue) || []).slice(0, 20).map(norm).filter(Boolean);
@@ -2541,7 +2629,7 @@ $('art-card').addEventListener('click', () => {
 let PLAYLISTS = [];
 async function loadLists(force){
   if(PLAYLISTS.length && !force){ renderLists(); return; }
-  $('lists').innerHTML = '<div class="note">Loading playlists</div>';
+  $('lists').innerHTML = '<div class="note loading">Loading playlists</div>';
   PLAYLISTS = [];
   let url = '/me/playlists?limit=50';
   for(let p = 0; p < 10 && url; p++){
