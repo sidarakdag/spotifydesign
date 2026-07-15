@@ -1060,6 +1060,12 @@ const BEAT = { v: 0, bpm: 120 };
    fluffs on the (faked) beat — the signature effect. Glowing paw prints
    fade behind it. Everything eases; no jitter.
    ========================================================================= */
+/* =========================================================================
+   CATS — the user's own pixel cat, copied faithfully from their artwork.
+   A row of them sits along the timeline. They don't walk; they bob gently
+   and jump on the beat, staggered left-to-right so the beat rolls across
+   the row like a little wave. White fur, soft blue bloom (#8AA8FF).
+   ========================================================================= */
 const D = (function(){
   const cv = $('cat');
   const ctx = cv.getContext('2d');
@@ -1067,19 +1073,45 @@ const D = (function(){
 
   const GLOW  = '#8AA8FF';
   const WHITE = '#F6F8FF';
-  const SHADE = '#C7D4F5';   // subtle blue shading pixel
-  const DARK  = '#2A3350';   // outline / eye
 
+  // ---- the sprite, read directly off the uploaded image (30 x 20) ----
+  // W = white fur, . = empty. The dark eye slits are simply gaps in the fur.
+  const CAT = [
+    "..................W........WW..",
+    "................WWWW......WWWW.",
+    "................WWWW......WWWW.",
+    "...............WWW.W.....WW..W.",
+    "..............WW...WW...WW...W.",
+    ".............WW...WWWWWWWWW..W.",
+    "..........WWWWWWWWWWWWWWWWWWWW.",
+    "..........WWWWWWWWWWWWWWWWWWWW.",
+    ".........WWWWWWWWWWWWWWWWWWWWW.",
+    "........WWWWWWWWWWWWWWWWWWWWWW.",
+    "........WWWWWWWWWWWWWWWWWWWWWW.",
+    "........WWWWWWWWWWWWWWWWWWWWWWW",
+    "........WWWWWWWWWWWWWWWWWWWWWWW",
+    ".WWWWWW.WWWWWWWWWWWWWWWWWWWWWWW",
+    "WWWWWWWWWWWWWWWW....WWWWW....WW",   // <- sleepy eye slits
+    "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+    "WWWW..WWWWWWWWWWWWWWWWWWWWWWWWW",
+    "WWWW..WWWWWWWWWWWWWWWWWWWWWWWWW",
+    "..........WWWWWWWWWWWWWWWWWWWW.",
+    ".............WWWWWWWWWWWWWWWW..",
+  ];
+  const SW = CAT[0].length;   // sprite grid width
+  const SH = CAT.length;      // sprite grid height
+
+  const N = 4;                // how many cats sit on the bar
   let w = 0, h = 52, dpr = 1, raf = null, last = performance.now(), t = 0;
 
-  // spring-tracked position so it walks toward the handle rather than teleporting
-  let px = null, pvx = 0;
-  let sit = 0, sleep = 0, moving = 0, stretch = 0, wokeT = 0;
-  let gait = 0, bodyStep = 0;
-  let blinkT = 3, blink = 0, earTwitchT = 5, earTwitch = 0;
-  let pauseClock = 0;
-  let prevPlaying = false;
-  const prints = [];    // fading paw prints
+  const cats = Array.from({length:N}, (_, i) => ({
+    seat: (i + 0.5) / N,               // fixed position along the bar
+    hopPhase: i * 0.16,                // stagger so the beat rolls across
+    hop: 0,                            // current jump height 0..1
+    breathe: Math.random() * Math.PI * 2
+  }));
+
+  let prevBeat = 0;
 
   function size(){
     const r = cv.getBoundingClientRect();
@@ -1092,179 +1124,21 @@ const D = (function(){
     ctx.imageSmoothingEnabled = false;
   }
 
-  const spring = (cur, target, vel, k, d, dt) => {
-    const f = (target - cur) * k;
-    vel = (vel + f * dt) * Math.pow(d, dt * 60);
-    return [cur + vel * dt, vel];
-  };
-  const ease = (cur, target, rate, dt) => cur + (target - cur) * Math.min(1, rate * dt);
-
-  /* -------------------------------------------------------------------------
-     SPRITE MAPS — hand-placed pixels, side profile, facing right.
-       . empty  o outline/dark  W white fur  b blue shade
-       e eye    n nose          f fur tuft (ripples on the beat)
-     Grid is 16 wide x 12 tall. Tail at left, head at right.
-     ------------------------------------------------------------------------- */
-
-  // STAND / WALK — raised round head at right, ear, eye; curled tail at left.
-  const STAND = [
-    "...........fff..",
-    "..........fWWWf.",   // head top
-    "..f.......WWWWW.",   // tail tip + head
-    ".fWf.....fWWWWW.",
-    ".fWf.....WWWeWW.",   // ear(left of head col) + eye
-    ".fWWfffffWWWWnW.",   // neck fur bridge + nose
-    ".fWWWWWWWWWWWWW.",   // back
-    ".WWWWWWWWWWWWWW.",   // body
-    ".WWWWWWWWWWWWWW.",
-    ".WW.WW..WW.WWW..",   // legs
-    ".WW.WW..WW.WWW..",
-    ".oo.oo..oo.ooo..",   // paws
-  ];
-
-  // SIT — head up at right, body upright, front paws together, tail curl.
-  const SIT = [
-    "...........fff..",
-    "..........fWWWf.",
-    "..........WWWWW.",
-    "..f......fWWWWW.",
-    ".fWf.....WWWeWW.",
-    ".fWWfffffWWWWnW.",
-    ".fWWWWWWWWWWWWW.",
-    ".WWWWWWWWWWWWWW.",
-    ".WWWWWWWWWWWWWW.",
-    ".WWWWWWWWWWWWWW.",
-    ".WWWWWW...WWW...",
-    ".oooooo...ooo...",
-  ];
-
-  // SLEEP — curled loaf, closed eyes, tail wrapped at right. Low + round.
-  const SLEEP = [
-    "................",
-    "................",
-    ".....fffff......",
-    "...ffWWWWWff....",
-    "..fWWWWWWWWWf...",
-    ".fWWWWWWWWWWWb..",
-    ".WWWooWWWooWWWb.",   // two closed-eye dashes
-    ".bWWWWWWWWWWWWb.",
-    "..bWWWWWWWWWWb..",
-    "...bWWWWWWWWb...",
-    "....oooooooo....",
-    "................",
-  ];
-
-  // STRETCH — front paws reach forward and low, rear stays up (waking).
-  const STRETCH = [
-    "...........fff..",
-    "..........fWWWf.",
-    "..........WWWWW.",
-    "..f......fWWWWW.",
-    ".fWf.....WWWeWW.",
-    ".fWWWWWWWWWWWnW.",
-    "fWWWWWWWWWWWWWW.",
-    ".WWWWWWWWWWWW.W.",
-    ".WW........WWWW.",
-    ".WW........WW...",
-    ".oo........oo...",
-    "................",
-  ];
-
-  // which cells are "fur" that should ripple: the top/edge W pixels + f pixels
-  function isFurTop(map, r, c){
-    if(map[r][c] === 'f') return true;
-    // a W with empty directly above counts as an exposed fur tip
-    if(map[r][c] === 'W' && (r === 0 || map[r-1][c] === '.')) return true;
-    return false;
-  }
-
-  function colorFor(ch){
-    switch(ch){
-      case 'W': return WHITE;
-      case 'f': return WHITE;
-      case 'b': return SHADE;
-      case 'o': return DARK;
-      case 'e': return DARK;
-      case 'n': return SHADE;
-      default:  return null;
-    }
-  }
-
-  /* draw one sprite map at (originX bottom-center, baseY bottom), pixel size ps */
-  function drawSprite(map, originX, baseY, ps, pose, glowPass){
-    const rows = map.length;
-    const cols = map[0].length;
-    const ox = Math.round(originX - (cols * ps) / 2);
-    const oy = Math.round(baseY - rows * ps);
-
-    const energy = pose.energy;              // 0..1 musical energy
-    const beat = pose.beat;                  // 0..1 current beat pulse
-    const squash = pose.squash;              // bass squash-stretch
-    const shimmer = pose.shimmer;            // treble shimmer phase
-
-    for(let r = 0; r < rows; r++){
-      for(let c = 0; c < cols; c++){
-        let ch = map[r][c];
-        if(ch === '.' ) continue;
-        // blink: turn open eyes into fur/white for the closure
-        if(ch === 'e' && pose.blink > 0.5) ch = 'W';
-        let col = colorFor(ch);
-        if(!col) continue;
-        if(glowPass){
-          if(ch === 'o') continue;        // don't glow the dark outline
-          col = GLOW;                       // whole glow silhouette is blue
+  /* draw the sprite centered at (cx) with its feet at baseY, pixel size ps */
+  function drawCat(cx, baseY, ps, alpha, color){
+    const ox = Math.round(cx - (SW * ps) / 2);
+    const oy = Math.round(baseY - SH * ps);
+    ctx.fillStyle = color;
+    ctx.globalAlpha = alpha;
+    for(let r = 0; r < SH; r++){
+      const row = CAT[r];
+      for(let c = 0; c < SW; c++){
+        if(row[c] === 'W'){
+          ctx.fillRect(ox + c * ps, oy + r * ps, ps, ps);
         }
-
-        let dx = ox + c * ps;
-        let dy = oy + r * ps;
-
-        // ---- squash & stretch on bass: wider+shorter on the beat ----
-        // scale around the body center
-        const cxp = ox + (cols * ps) / 2;
-        const byp = oy + rows * ps;
-        dx = cxp + (dx - cxp) * (1 + squash * 0.06);
-        dy = byp + (dy - byp) * (1 - squash * 0.05);
-
-        let size = ps;
-
-        // ---- fur ripple: exposed fur tips bounce/compress on the beat ----
-        if(isFurTop(map, r, c)){
-          // stronger toward the tail (left side) and ears (top)
-          const tailWeight = 1 - c / cols;              // left = tail
-          const earWeight  = 1 - r / rows;              // top = ears
-          const lift = (beat * (0.5 + tailWeight * 0.8) + shimmerAt(c, r, shimmer) * energy) * ps * 0.5;
-          dy -= lift;
-          // breeze: a gentle horizontal sine travelling across the fur
-          dx += Math.sin(t * 2.2 + c * 0.6) * energy * ps * 0.18;
-          // fluffier when energetic — fur tips grow a hair
-          size = ps * (1 + energy * 0.12 + beat * 0.15 * tailWeight);
-        }
-
-        // breathing lifts the whole upper body a touch
-        dy -= pose.breath * (1 - r / rows);
-
-        // ---- ear twitch: top two rows jitter sideways briefly ----
-        if(r < 3 && pose.earTwitch > 0.05){
-          dx += Math.sin(t * 40) * pose.earTwitch * ps * 0.5;
-        }
-
-        ctx.fillStyle = col;
-        ctx.fillRect(Math.round(dx), Math.round(dy), Math.ceil(size), Math.ceil(size));
       }
     }
-  }
-
-  // pseudo treble shimmer — a fine high-frequency flicker per pixel
-  function shimmerAt(c, r, phase){
-    return (Math.sin(phase * 9 + c * 2.3 + r * 1.7) * 0.5 + 0.5) * 0.4;
-  }
-
-  function drawPawPrints(baseY, ps){
-    for(const p of prints){
-      const a = p.life * 0.5;
-      ctx.fillStyle = 'rgba(138,168,255,' + a.toFixed(3) + ')';
-      ctx.fillRect(Math.round(p.x), Math.round(baseY - ps), Math.ceil(ps*0.8), Math.ceil(ps*0.8));
-    }
+    ctx.globalAlpha = 1;
   }
 
   function frame(now){
@@ -1276,117 +1150,51 @@ const D = (function(){
 
     ctx.clearRect(0, 0, w, h);
 
-    const ps = 2;                                   // pixel size → ~28px tall sprite
+    const ps = 1;                        // 1px cells → ~20px tall, crisp
     const baseY = h - 6;
-    const prog = st.dur ? st.pos / st.dur : 0;
-    const margin = 18;
-    const targetX = margin + prog * (w - margin * 2);
-
-    if(px === null) px = targetX;
-    const before = px;
-    [px, pvx] = spring(px, targetX, pvx, 9, 0.72, dt);
-    const drawX = Math.max(16, Math.min(w - 16, px));
-    const speed = Math.abs(px - before) / (dt || 0.016);
-    const travelling = speed > 6;
-
-    // ---- state transitions ----
-    const justResumed = st.playing && !prevPlaying;
-    if(justResumed && sleep > 0.3){ stretch = 1; wokeT = 0.9; }  // wake → stretch
-    prevPlaying = st.playing;
-
-    const ended = st.dur > 0 && st.pos >= st.dur - 1200 && !st.playing;
-    const paused = !st.playing && !ended;
-
-    // count how long we've been paused; only drift to sleep after ~8s
-    if(paused) pauseClock += dt; else pauseClock = 0;
-    const shouldSleep = ended || pauseClock > 8;
-
-    sleep   = ease(sleep, shouldSleep ? 1 : 0, ended ? 2.4 : 0.5, dt);
-    sit     = ease(sit, (paused && !shouldSleep) ? 1 : 0, 6, dt);
-    moving  = ease(moving, (st.playing || travelling) ? 1 : 0, 8, dt);
-    if(wokeT > 0){ wokeT -= dt; stretch = ease(stretch, wokeT > 0 ? 1 : 0, 4, dt); }
-    else stretch = ease(stretch, 0, 5, dt);
-
-    // gait
-    const strollRate = st.playing ? 2.4 : 0;
-    gait += (Math.min(1, speed / 40) * 9 + strollRate) * dt;
-    bodyStep = Math.sin(gait * Math.PI * 2);
-
-    // blink + ear twitch
-    blinkT -= dt; if(blinkT <= 0){ blink = 1; blinkT = 4 + Math.random()*2.5; }
-    blink = Math.max(0, blink - dt * 7);
-    earTwitchT -= dt; if(earTwitchT <= 0){ earTwitch = 1; earTwitchT = 5 + Math.random()*4; }
-    earTwitch = Math.max(0, earTwitch - dt * 6);
-
-    // ---- musical drive (faked from the beat clock) ----
     const playing = st.playing;
     const beat = playing ? BEAT.v : 0;
-    const energy = playing ? (0.35 + BEAT.v * 0.65) : 0;
-    const squash = playing ? Math.pow(BEAT.v, 1.5) : 0;      // bass squash on strong beats
 
-    // ---- paw prints: drop one each half gait-cycle while walking ----
-    if(playing && moving > 0.4 && Math.abs(bodyStep) > 0.95){
-      const lastP = prints[prints.length-1];
-      if(!lastP || Math.abs(lastP.x - drawX) > 4){
-        prints.push({ x: drawX + (bodyStep>0?3:-3), life: 1 });
+    // detect a fresh beat peak → trigger a jump, rolling across the row
+    const rising = beat > 0.75 && prevBeat <= 0.75;
+    prevBeat = beat;
+
+    const prog = st.dur ? st.pos / st.dur : 0;
+
+    for(let i = 0; i < cats.length; i++){
+      const cat = cats[i];
+      const cx = 14 + cat.seat * (w - 28);
+
+      // on a beat, kick off a jump; stagger by seat so it ripples
+      if(rising){
+        setTimeout((() => { cat.hop = 1; }), cat.seat * 130);
       }
-    }
-    for(let i = prints.length-1; i >= 0; i--){
-      prints[i].life -= dt * 1.1;
-      if(prints[i].life <= 0) prints.splice(i,1);
-    }
+      // decay the hop with a springy fall
+      cat.hop = Math.max(0, cat.hop - dt * 3.2);
+      const jump = Math.sin(cat.hop * Math.PI) * 7;      // arc height in px
 
-    // ---- ambient glow under the paws, pulsing with the beat ----
-    const glowPulse = 0.55 + 0.45 * beat;
-    const g = ctx.createRadialGradient(drawX, baseY, 0, drawX, baseY, 20 * (1 + energy*0.2));
-    g.addColorStop(0, 'rgba(138,168,255,' + (0.30 * glowPulse).toFixed(3) + ')');
-    g.addColorStop(1, 'rgba(138,168,255,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.ellipse(drawX, baseY, 20, 5.5, 0, 0, 6.2832);
-    ctx.fill();
+      // gentle idle breathing bob when not jumping
+      const bob = Math.sin(t * 1.6 + cat.breathe) * 1.1 * (playing ? 1 : 0.5);
 
-    drawPawPrints(baseY, ps);
+      const y = baseY - jump - bob;
 
-    // ---- choose sprite by state ----
-    let map = STAND;
-    if(stretch > 0.5) map = STRETCH;
-    else if(sleep > 0.55) map = SLEEP;
-    else if(sit > 0.5) map = SIT;
+      // the cat under the playhead is brightest; the rest sit a little dimmer
+      const near = 1 - Math.min(1, Math.abs(cat.seat - prog) * 3);
+      const alpha = 0.4 + near * 0.6;
 
-    // breathing (bigger when asleep), head bob while walking
-    const breath = (Math.sin(t * 1.5) * 1.2) * (0.6 + sleep * 0.8);
-    const bob = playing ? Math.abs(bodyStep) * 1.2 * moving : 0;
+      // ground glow, brighter mid-jump and on the beat
+      const glowA = (0.12 + near * 0.16 + cat.hop * 0.2) * (playing ? 1 : 0.5);
+      const g = ctx.createRadialGradient(cx, baseY, 0, cx, baseY, 16);
+      g.addColorStop(0, 'rgba(138,168,255,' + glowA.toFixed(3) + ')');
+      g.addColorStop(1, 'rgba(138,168,255,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(cx, baseY + 1, 14, 4, 0, 0, 6.2832);
+      ctx.fill();
 
-    // blink is baked by swapping eye rows off — simplest: dim eye when blinking
-    const pose = {
-      energy: energy,
-      beat: beat,
-      squash: squash,
-      shimmer: t,
-      breath: breath + bob,
-      blink: Math.max(blink, sleep),
-      earTwitch: earTwitch
-    };
-
-    // pixel-native bloom: a dim, slightly enlarged copy behind the crisp art,
-    // so it glows without the smeary blur that ruins pixel work.
-    ctx.globalAlpha = 0.22 + beat * 0.18;
-    drawSprite(map, drawX, baseY + 0.5, ps + 0.6, pose, true);
-    ctx.globalAlpha = 1;
-
-    // crisp sprite — sharp pixels, no blur.
-    drawSprite(map, drawX, baseY, ps, pose);
-
-    // tiny glowing pixels around the cat when energetic
-    if(energy > 0.3){
-      ctx.fillStyle = 'rgba(138,168,255,' + (0.25 * energy).toFixed(3) + ')';
-      for(let i = 0; i < 3; i++){
-        const a = t * 1.3 + i * 2.1;
-        const gx = drawX + Math.cos(a) * (14 + i*3);
-        const gy = baseY - 14 + Math.sin(a*1.3) * 8;
-        ctx.fillRect(Math.round(gx), Math.round(gy), 2, 2);
-      }
+      // soft blue bloom copy behind, then the crisp white sprite
+      drawCat(cx, y + 0.5, ps + 0.5, (0.18 + cat.hop * 0.15) * alpha, GLOW);
+      drawCat(cx, y, ps, alpha, WHITE);
     }
   }
 
