@@ -92,7 +92,7 @@
   body.has-photo #bloom{opacity:.4;}
 
   #grain{
-    position:fixed;inset:0;z-index:2;pointer-events:none;opacity:.035;mix-blend-mode:overlay;
+    position:fixed;inset:0;z-index:2;pointer-events:none;opacity:.03;
     background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='0.5'/></svg>");
   }
 
@@ -145,11 +145,13 @@
   /* the artwork: floating glass-bordered titanium frame */
   .art{
     position:relative;width:min(76vw,320px);aspect-ratio:1;flex:0 0 auto;
-    transform-style:preserve-3d;cursor:pointer;
-    transform:scale(calc(.93 + var(--pulse) * .015)) rotateY(0deg);
+    transform-style:preserve-3d;cursor:pointer;will-change:transform;
+    transform:scale(calc(.93 + var(--pulse) * .015)) rotateX(var(--tiltX,0deg)) rotateY(var(--tiltY,0deg));
     transition:transform .8s cubic-bezier(.22,1,.36,1);
   }
-  body:not(.paused) .art{transform:scale(calc(1 + var(--pulse) * .02)) rotateY(0deg);}
+  /* while the cursor is steering the tilt, follow it near-instantly */
+  .art.tilting{transition:transform .12s ease-out;}
+  body:not(.paused) .art{transform:scale(calc(1 + var(--pulse) * .02)) rotateX(var(--tiltX,0deg)) rotateY(var(--tiltY,0deg));}
   .art.flipped{transform:rotateY(180deg) !important;}
 
   .art-face{
@@ -472,8 +474,9 @@
     100%{opacity:1;transform:scale(1);filter:blur(0) saturate(1);}
   }
   @keyframes riseIn{
-    0%{opacity:0;transform:translateY(12px);}
-    100%{opacity:1;transform:translateY(0);}
+    0%{opacity:0;transform:translateY(14px);filter:blur(8px);}
+    60%{filter:blur(0);}
+    100%{opacity:1;transform:translateY(0);filter:blur(0);}
   }
   @keyframes sweep{
     0%{transform:translateX(-100%);opacity:0;}
@@ -587,6 +590,115 @@
     background:rgba(0,0,0,.15);backdrop-filter:blur(2px);border-radius:14px;
   }
 
+  /* =========================================================================
+     PREMIUM POLISH — depth, lighting, microinteractions. Purely additive:
+     motion layers on top of the existing chrome, all GPU-friendly (transform
+     + opacity), all disabled under prefers-reduced-motion.
+     ========================================================================= */
+
+  /* soft light-blob layer drifting behind everything (its own ambient motion) */
+  /* (soft light-blobs are drawn on the particle canvas — see the P module) */
+
+  /* cursor spotlight — a soft light that follows the pointer (desktop only) */
+  #cursor-glow{
+    position:fixed;top:0;left:0;width:460px;height:460px;z-index:1;pointer-events:none;
+    margin:-230px 0 0 -230px;border-radius:50%;opacity:0;
+    background:radial-gradient(circle, rgba(120,150,255,.14), rgba(120,150,255,.05) 40%, transparent 70%);
+    transition:opacity .6s ease;will-change:transform;
+  }
+  body.has-cursor #cursor-glow{opacity:1;}
+
+  /* ripple that blooms from the point of contact on any button */
+  .ripple{position:absolute;border-radius:50%;pointer-events:none;transform:translate(-50%,-50%) scale(0);
+    background:radial-gradient(circle, rgba(255,255,255,.5), rgba(255,255,255,0) 70%);
+    animation:ripple .6s cubic-bezier(.22,1,.36,1) forwards;z-index:5;}
+  @keyframes ripple{to{transform:translate(-50%,-50%) scale(1);opacity:0;}}
+
+  /* magnetic elements: JS drives translate/scale, CSS eases it smoothly */
+  .mag{transition:transform .28s cubic-bezier(.22,1,.36,1), box-shadow .3s ease, border-color .25s;}
+  .mag.press{transition:transform .09s ease-out;}
+  .tbtn.mag:hover{box-shadow:inset 0 1px 0 var(--edge), 0 0 22px -6px var(--blue-glow), 0 2px 8px rgba(0,0,0,.5);}
+  .tbtn.big.mag:hover{box-shadow:0 20px 54px -10px var(--blue-glow), 0 6px 18px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.9);}
+
+  /* the play button gently breathes a halo while paused (idle animation) */
+  .tbtn.big::before{
+    content:"";position:absolute;inset:-6px;border-radius:28px;z-index:-1;pointer-events:none;
+    background:radial-gradient(circle, var(--blue-glow), transparent 70%);
+    opacity:.35;animation:breathe 3.6s ease-in-out infinite;
+  }
+  body:not(.paused) .tbtn.big::before{animation-duration:1.6s;opacity:.6;}
+  @keyframes breathe{0%,100%{transform:scale(.9);opacity:.28;}50%{transform:scale(1.12);opacity:.55;}}
+
+  /* dynamic glare that tracks the cursor across the album art */
+  .art-glare{
+    position:absolute;inset:0;border-radius:20px;z-index:4;pointer-events:none;opacity:0;
+    background:radial-gradient(240px 240px at var(--gx,50%) var(--gy,50%), rgba(255,255,255,.35), rgba(255,255,255,0) 60%);
+    transition:opacity .35s ease;mix-blend-mode:screen;
+  }
+  .art-wrap:hover .art-glare{opacity:1;}
+
+  /* the art breathes/floats even at rest */
+  .art-wrap{--float:0px;}
+  .art{animation:artFloat 7s ease-in-out infinite;}
+  @keyframes artFloat{0%,100%{translate:0 -4px;}50%{translate:0 5px;}}
+
+  /* wordmark: a slow shimmer of light passes through the letters */
+  .wordmark{background:linear-gradient(100deg, var(--bone) 30%, #cfe0ff 50%, var(--bone) 70%);
+    background-size:220% 100%;-webkit-background-clip:text;background-clip:text;
+    animation:shimmer 7s linear infinite;}
+  @keyframes shimmer{0%{background-position:120% 0;}100%{background-position:-120% 0;}}
+
+  /* chips get an animated sheen sweep on hover */
+  .chip{overflow:hidden;}
+  .chip::before{content:"";position:absolute;top:0;left:-60%;width:45%;height:100%;z-index:1;pointer-events:none;
+    background:linear-gradient(100deg, transparent, rgba(255,255,255,.18), transparent);
+    transform:skewX(-18deg);opacity:0;transition:opacity .2s;}
+  .chip:hover::before{opacity:1;animation:sheen .8s ease;}
+  @keyframes sheen{0%{left:-60%;}100%{left:130%;}}
+
+  /* sheet rows fade+rise in a stagger when a sheet opens */
+  .sheet.open .stagger-in{animation:rowIn .5s cubic-bezier(.22,1,.36,1) both;animation-delay:var(--d,0ms);}
+  @keyframes rowIn{0%{opacity:0;transform:translateY(10px);filter:blur(4px);}100%{opacity:1;transform:none;filter:blur(0);}}
+
+  /* animated gradient hairline under a sheet header */
+  .sheet-head{position:relative;}
+  .sheet-head::after{content:"";position:absolute;left:0;right:0;bottom:-8px;height:1px;
+    background:linear-gradient(90deg, transparent, var(--blue-dim), transparent);
+    background-size:200% 100%;animation:slide 6s linear infinite;}
+  @keyframes slide{0%{background-position:0 0;}100%{background-position:200% 0;}}
+
+  /* premium focus ring — a soft animated glow instead of a hard outline */
+  .mag:focus-visible{outline:none;box-shadow:0 0 0 2px var(--b0), 0 0 0 4px var(--blue), 0 0 18px -2px var(--blue-glow);}
+
+  /* gate: cinematic staggered entrance + a slowly breathing title glow */
+  #gate:not(.hide) > *{animation:riseIn .8s cubic-bezier(.22,1,.36,1) both;}
+  #gate:not(.hide) h1{animation-delay:.05s;}
+  #gate:not(.hide) #gate-copy{animation-delay:.16s;}
+  #gate:not(.hide) #gate-setup,
+  #gate:not(.hide) #login{animation-delay:.28s;}
+  #gate:not(.hide) .gate-note{animation-delay:.4s;}
+  #gate h1{animation:gateGlow 4.5s ease-in-out infinite;}
+  @keyframes gateGlow{
+    0%,100%{text-shadow:0 0 30px rgba(76,123,255,.28);}
+    50%{text-shadow:0 0 52px rgba(76,123,255,.55), 0 0 90px rgba(76,123,255,.25);}
+  }
+  #app[aria-hidden="false"]{animation:appIn .9s cubic-bezier(.22,1,.36,1) both;}
+  @keyframes appIn{0%{opacity:0;transform:scale(.985);filter:blur(6px);}100%{opacity:1;transform:none;filter:blur(0);}}
+
+  @media (prefers-reduced-motion: reduce){
+    #blobs,#cursor-glow{display:none !important;}
+    .art,.tbtn.big::before,.wordmark,.sheet-head::after,
+    #gate h1,#gate:not(.hide) > *,#app[aria-hidden="false"]{animation:none !important;}
+    .mag{transition:none !important;}
+    .chip:hover::before{animation:none !important;opacity:0 !important;}
+    .sheet.open .stagger-in{animation:none !important;}
+  }
+  /* touch devices: no magnetic/tilt/glare/cursor-glow (they need a real pointer) */
+  @media (hover:none){
+    #cursor-glow{display:none !important;}
+    .art-wrap:hover .art-glare{opacity:0;}
+  }
+
 </style>
 </head>
 <body class="paused">
@@ -599,6 +711,7 @@
 <div id="photo"></div>
 <div id="bloom"></div>
 <div id="grain"></div>
+<div id="cursor-glow"></div>
 
 <!-- ============ GATE ============ -->
 <div id="gate">
@@ -634,6 +747,7 @@
       <div class="art" id="art-card">
         <div class="art-face art-front">
           <img id="art" alt="" crossorigin="anonymous" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'/>">
+          <span class="art-glare" aria-hidden="true"></span>
         </div>
         <div class="art-face art-back">
           <div class="art-back-inner">
@@ -1000,7 +1114,31 @@ const P = (function(){
   const cv = $('field');
   const ctx = cv.getContext('2d');
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let w, h, dpr, parts = [], c1 = '#4C7BFF', c2 = '#8FA8FF', playing = false, raf = null, t = 0, density = 1;
+  let w, h, dpr, parts = [], sparks = [], c1 = '#4C7BFF', c2 = '#8FA8FF';
+  let playing = false, raf = null, t = 0, density = 1, last = performance.now();
+  // eased pointer, in normalized -1..1 from centre, drives parallax + drift
+  let pxT = 0, pyT = 0, px = 0, py = 0, sparkT = 1.5;
+
+  // soft light-blobs, drawn on this same canvas: each is a pre-rendered tinted
+  // sprite blitted once per frame — cheap additive fill, no blurred DOM layers
+  const blobs = [
+    { col:'120,150,255', rad:0.46, a:0.30, ph:Math.random()*6.28, sp:0.05, ox:0.30, oy:0.26, spr:document.createElement('canvas') },
+    { col:'150,120,255', rad:0.38, a:0.24, ph:Math.random()*6.28, sp:0.07, ox:0.24, oy:0.22, spr:document.createElement('canvas') },
+    { col:'60,110,220',  rad:0.54, a:0.26, ph:Math.random()*6.28, sp:0.04, ox:0.28, oy:0.30, spr:document.createElement('canvas') }
+  ];
+
+  function buildBlob(){
+    const d = 256;
+    for(const b of blobs){
+      b.spr.width = b.spr.height = d;
+      const bx = b.spr.getContext('2d'), c = d/2;
+      const g = bx.createRadialGradient(c,c,0,c,c,c);
+      g.addColorStop(0,   'rgba('+b.col+',1)');
+      g.addColorStop(0.5, 'rgba('+b.col+',0.32)');
+      g.addColorStop(1,   'rgba('+b.col+',0)');
+      bx.fillStyle = g; bx.beginPath(); bx.arc(c,c,c,0,6.2832); bx.fill();
+    }
+  }
 
   function size(){
     dpr = Math.min(devicePixelRatio || 1, 2);
@@ -1008,45 +1146,115 @@ const P = (function(){
     cv.width = w * dpr; cv.height = h * dpr;
     cv.style.width = w + 'px'; cv.style.height = h + 'px';
     ctx.setTransform(dpr,0,0,dpr,0,0);
+    buildBlob();
   }
   function seed(){
-    const n = reduce ? 0 : Math.round((Math.min(w,h) / 8) * density);
-    parts = Array.from({length:n}, () => ({
-      x: Math.random()*w, y: Math.random()*h,
-      r: Math.random()*1.7 + .35,
-      vx:(Math.random()-.5)*.11, vy:-Math.random()*.16 - .03,
-      a: Math.random()*.5 + .12, p: Math.random()*Math.PI*2,
-      c: Math.random() > .5
-    }));
+    const n = reduce ? 0 : Math.round((Math.min(w,h) / 9) * density);
+    parts = new Array(n);
+    for(let i = 0; i < n; i++) parts[i] = mkPart(true);
   }
-  function frame(){
-    t += .006;
+  /* each particle carries a depth 0..1 — near ones are bigger, brighter,
+     faster and parallax more; far ones are faint dust. Lifetime fades. */
+  function mkPart(fresh){
+    const depth = Math.random();
+    return {
+      x: Math.random()*w, y: Math.random()*h, depth,
+      r: 0.4 + depth*depth*2.4,
+      vx: (Math.random()-.5)*.10*(0.4+depth),
+      vy: -(Math.random()*.14 + .02)*(0.4+depth),
+      p: Math.random()*Math.PI*2,
+      wob: 0.6 + Math.random()*1.2,               // wander strength
+      base: (0.10 + Math.random()*0.5)*(0.4+depth),
+      c: Math.random() > .5,
+      life: fresh ? Math.random() : 0,            // 0..1 fade-in→drift→fade-out
+      ttl: 6 + Math.random()*10                    // seconds
+    };
+  }
+  function frame(now){
+    raf = requestAnimationFrame(frame);
+    let dt = (now - last)/1000; last = now;
+    if(dt > 0.05) dt = 0.05;
+    // the aura skin hides this canvas and runs its own scene — do no work here
+    if(document.body.dataset.skin === 'aura'){ return; }
+    t += dt;
+    // ease pointer toward target (cinematic lag)
+    px += (pxT - px) * Math.min(1, dt*3);
+    py += (pyT - py) * Math.min(1, dt*3);
+
     ctx.clearRect(0,0,w,h);
     ctx.globalCompositeOperation = 'lighter';
-    const speed = playing ? 1 : .18;
-    for(const p of parts){
-      p.p += .012;
-      p.x += (p.vx + Math.sin(t + p.p) * .16) * speed;
+    const speed = (playing ? 1 : .22) * 60 * dt;
+    const beat = playing ? (BEAT ? BEAT.v : 0) : 0;
+
+    // soft light-blobs orbiting slowly behind the dust (sprite blits)
+    const mn = Math.min(w,h);
+    for(let i=0;i<blobs.length;i++){
+      const b = blobs[i];
+      const a = t*b.sp + b.ph;
+      const bx = w*0.5 + Math.cos(a)*w*b.ox + px*22*(i+1);
+      const by = h*0.5 + Math.sin(a*0.8)*h*b.oy + py*22*(i+1);
+      const s  = mn*b.rad*2*(1 + beat*0.08);
+      ctx.globalAlpha = b.a*(0.8 + (playing?0.2:0)) + beat*0.05;
+      ctx.drawImage(b.spr, bx - s/2, by - s/2, s, s);
+    }
+
+    for(let i=0;i<parts.length;i++){
+      const p = parts[i];
+      p.p += .8*dt*p.wob;
+      p.life += dt/p.ttl;
+      if(p.life >= 1){ parts[i] = mkPart(false); continue; }
+      // wander: a slowly turning direction so paths never obviously repeat
+      p.x += (p.vx + Math.sin(t*0.6 + p.p) * .16) * speed;
       p.y += p.vy * speed;
-      if(p.y < -12){ p.y = h + 12; p.x = Math.random()*w; }
-      if(p.x < -12) p.x = w + 12;
-      if(p.x > w + 12) p.x = -12;
-      ctx.globalAlpha = p.a * (.72 + Math.sin(p.p * 1.7) * .28) * (playing ? 1 : .42);
+      if(p.y < -14){ p.y = h + 14; p.x = Math.random()*w; }
+      if(p.x < -14) p.x = w + 14;
+      if(p.x > w + 14) p.x = -14;
+      // parallax by depth toward the eased cursor
+      const par = p.depth * 26;
+      const dx = p.x + px * par;
+      const dy = p.y + py * par;
+      // natural fade in and out over the lifetime, plus a gentle twinkle
+      const fade = Math.sin(Math.min(1,p.life)*Math.PI);
+      const tw = 0.7 + Math.sin(p.p*1.7)*0.3;
+      ctx.globalAlpha = p.base * fade * tw * (playing ? 1 : .5) * (1 + beat*0.5);
       ctx.fillStyle = p.c ? c1 : c2;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, 6.2832);
+      ctx.arc(dx, dy, p.r*(1+beat*0.25), 0, 6.2832);
       ctx.fill();
     }
+
+    // occasional sparkles — a brief bright bloom that fades quickly
+    sparkT -= dt;
+    if(!reduce && sparkT <= 0 && sparks.length < 6){
+      sparks.push({ x: Math.random()*w, y: Math.random()*h*0.9, life:0, ttl:0.9+Math.random()*0.8, s: 6+Math.random()*10 });
+      sparkT = 0.6 + Math.random()*1.8;
+    }
+    for(let i=sparks.length-1;i>=0;i--){
+      const s = sparks[i]; s.life += dt/s.ttl;
+      if(s.life >= 1){ sparks.splice(i,1); continue; }
+      const f = Math.sin(s.life*Math.PI), len = s.s*(0.6+f*0.6);
+      ctx.globalAlpha = f*0.8;
+      ctx.strokeStyle = '#dfeaff'; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(s.x-len,s.y); ctx.lineTo(s.x+len,s.y);
+      ctx.moveTo(s.x,s.y-len); ctx.lineTo(s.x,s.y+len);
+      ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(s.x,s.y,1.4,0,6.2832); ctx.fill();
+    }
+
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
-    raf = requestAnimationFrame(frame);
   }
   addEventListener('resize', function(){ size(); seed(); });
+  addEventListener('pointermove', function(e){
+    pxT = (e.clientX / innerWidth  - .5) * 2;
+    pyT = (e.clientY / innerHeight - .5) * 2;
+  }, { passive:true });
   size(); seed();
-  if(!reduce) raf = requestAnimationFrame(frame);
+  if(!reduce){ last = performance.now(); raf = requestAnimationFrame(frame); }
   document.addEventListener('visibilitychange', function(){
     if(document.hidden){ cancelAnimationFrame(raf); raf = null; }
-    else if(!raf && !reduce) raf = requestAnimationFrame(frame);
+    else if(!raf && !reduce){ last = performance.now(); raf = requestAnimationFrame(frame); }
   });
   return {
     retint: function(a,b){ c1 = a; c2 = b; },
@@ -2493,6 +2701,108 @@ document.querySelectorAll('.skin-opt').forEach(b => {
     buzz(8);
   };
 });
+
+/* =========================================================================
+   PREMIUM — ambient depth + microinteractions. Additive polish only; every
+   effect is GPU-friendly (transform/opacity), pointer effects are desktop-
+   only, and all of it is skipped under prefers-reduced-motion.
+   ========================================================================= */
+(function PREMIUM(){
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const fine   = matchMedia('(hover:hover) and (pointer:fine)').matches;
+
+  /* (soft light-blobs now live inside the particle canvas — see the P module) */
+
+  /* ---- cursor spotlight (desktop) ---- */
+  if(fine && !reduce){
+    const g = $('cursor-glow');
+    let gx = innerWidth/2, gy = innerHeight/2, tx = gx, ty = gy;
+    addEventListener('pointermove', e => { tx=e.clientX; ty=e.clientY; document.body.classList.add('has-cursor'); }, { passive:true });
+    document.addEventListener('mouseleave', () => document.body.classList.remove('has-cursor'));
+    (function loop(){ gx+=(tx-gx)*0.15; gy+=(ty-gy)*0.15; g.style.transform='translate('+gx+'px,'+gy+'px)'; requestAnimationFrame(loop); })();
+  }
+
+  /* ---- ripple from the point of contact (works on touch too) ---- */
+  function addRipple(el){
+    el.addEventListener('pointerdown', e => {
+      if(reduce) return;
+      const r = el.getBoundingClientRect();
+      const size = Math.max(r.width, r.height) * 1.5;
+      const rp = document.createElement('span');
+      rp.className = 'ripple';
+      rp.style.width = rp.style.height = size+'px';
+      rp.style.left = (e.clientX - r.left)+'px';
+      rp.style.top  = (e.clientY - r.top)+'px';
+      if(getComputedStyle(el).position === 'static') el.style.position = 'relative';
+      el.style.overflow = 'hidden';
+      el.appendChild(rp);
+      setTimeout(() => rp.remove(), 650);
+    });
+  }
+
+  /* ---- magnetic pull toward the cursor (desktop); ripple everywhere ---- */
+  function magnetize(el, strength){
+    el.classList.add('mag');
+    addRipple(el);
+    if(!fine || reduce) return;
+    let pressed = false, ldx = 0, ldy = 0;
+    const set = () => { el.style.transform = 'translate('+(ldx*strength).toFixed(1)+'px,'+(ldy*strength).toFixed(1)+'px) scale('+(pressed?0.94:1)+')'; };
+    el.addEventListener('pointermove', e => {
+      const r = el.getBoundingClientRect();
+      ldx = (e.clientX - (r.left+r.width/2)) / (r.width/2);
+      ldy = (e.clientY - (r.top+r.height/2)) / (r.height/2);
+      set();
+    });
+    el.addEventListener('pointerleave', () => { el.classList.remove('press'); el.style.transform=''; });
+    el.addEventListener('pointerdown', () => { pressed=true; el.classList.add('press'); set(); });
+    addEventListener('pointerup', () => { if(pressed){ pressed=false; el.classList.remove('press'); if(el.matches(':hover')) set(); else el.style.transform=''; } });
+  }
+  document.querySelectorAll('.tbtn').forEach(b => magnetize(b, b.classList.contains('big') ? 10 : 7));
+  document.querySelectorAll('.chip, #btn-logout, .gate-btn, .sheet-close, .skin-opt, .row-add').forEach(b => magnetize(b, 4));
+
+  /* ---- album art: 3D tilt toward the cursor + a glare that tracks it ---- */
+  if(fine && !reduce){
+    const wrap = document.querySelector('.art-wrap');
+    const card = $('art-card');
+    const glare = document.querySelector('.art-glare');
+    if(wrap && card){
+      wrap.addEventListener('pointermove', e => {
+        if(card.classList.contains('flipped')) return;
+        const r = card.getBoundingClientRect();
+        const dx = (e.clientX - (r.left+r.width/2)) / (r.width/2);
+        const dy = (e.clientY - (r.top+r.height/2)) / (r.height/2);
+        card.classList.add('tilting');
+        card.style.setProperty('--tiltY', (dx*9).toFixed(2)+'deg');
+        card.style.setProperty('--tiltX', (-dy*9).toFixed(2)+'deg');
+        if(glare){ glare.style.setProperty('--gx',(50+dx*40)+'%'); glare.style.setProperty('--gy',(50+dy*40)+'%'); }
+      });
+      wrap.addEventListener('pointerleave', () => {
+        card.classList.remove('tilting');
+        card.style.setProperty('--tiltX','0deg');
+        card.style.setProperty('--tiltY','0deg');
+      });
+    }
+  }
+
+  /* ---- staggered reveal for rows as they enter any sheet ---- */
+  if(!reduce){
+    document.querySelectorAll('.sheet-body').forEach(body => {
+      new MutationObserver(muts => {
+        let i = 0;
+        for(const m of muts){
+          for(const node of m.addedNodes){
+            if(node.nodeType !== 1) continue;
+            node.style.animation = 'none';
+            void node.offsetWidth;                 // restart the animation
+            node.style.animation = 'rowIn .5s cubic-bezier(.22,1,.36,1) both';
+            node.style.animationDelay = Math.min(i*28, 260) + 'ms';
+            i++;
+          }
+        }
+      }).observe(body, { childList:true });
+    });
+  }
+})();
 
 /* =========================================================================
    BOOT
