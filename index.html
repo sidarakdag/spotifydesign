@@ -1156,16 +1156,25 @@ function setPlayIcon(on){
 }
 
 async function poll(){
+  try{
+    await pollInner();
+  }catch(e){
+    // never let one bad tick kill the loop — the next tick will retry
+  }
+}
+
+async function pollInner(){
   const res = await api('/me/player');
-  if(!res.ok || !res.data || !res.data.item){ setPlayIcon(false); return; }
+  if(!res.ok || !res.data){ return; }        // no device / nothing yet — keep last view, keep polling
   const d = res.data;
   const it = d.item;
+  if(!it){ return; }                          // between tracks / ad — wait for the next tick
 
   st.playing = d.is_playing;
-  st.dur = it.duration_ms;
+  st.dur = it.duration_ms || 0;
   if(!st.seeking) st.pos = d.progress_ms || 0;
-  st.shuffle = d.shuffle_state;
-  st.repeat  = d.repeat_state;
+  st.shuffle = !!d.shuffle_state;
+  st.repeat  = d.repeat_state || 'off';
 
   if(d.device && typeof d.device.volume_percent === 'number' && !volDrag){
     st.vol = d.device.volume_percent;
@@ -2168,6 +2177,8 @@ function enterApp(){
   const cached = readCache();
   if(cached){ LIB = cached; libLoaded = true; }
 
+  // wake a device on startup so state shows and play works without hand-opening Spotify
+  ensureDevice().then(() => poll());
   poll();
   setInterval(poll, 2000);
   setInterval(tick, 250);
