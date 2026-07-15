@@ -1159,12 +1159,12 @@ async function poll(){
   try{
     await pollInner();
   }catch(e){
-    // never let one bad tick kill the loop — the next tick will retry
+    dbg('poll crashed: ' + (e && e.message ? e.message : e) + '\n' + (e && e.stack ? e.stack.split('\n')[1] : ''));
   }
 }
 
 let emptyPolls = 0;
-let DEBUG = true;   // temporary — shows raw poll status on screen
+let DEBUG = false;   // set true to show raw poll status on screen
 
 function dbg(msg){
   if(!DEBUG) return;
@@ -1226,15 +1226,18 @@ async function pollInner(){
   $('btn-repeat').classList.toggle('on', st.repeat !== 'off');
   $('repeat-dot').style.display = st.repeat === 'track' ? 'block' : 'none';
 
+  // always reflect the current track text — cheap, and immune to a stale st.id
+  const artists = (it.artists || []).map(a => a.name).join(', ');
+  const albumName = (it.album && it.album.name) || '';
+  $('title').textContent  = it.name || '—';
+  $('artist').textContent = artists || '';
+  $('ab-title').textContent  = it.name || '—';
+  $('ab-artist').textContent = artists || '';
+  $('ab-album').textContent  = albumName;
+
   if(it.id !== st.id){
     const first = st.id === null;
     st.id = it.id;
-    $('title').textContent  = it.name;
-    $('artist').textContent = (it.artists || []).map(a => a.name).join(', ');
-    const albumName = (it.album && it.album.name) || '';
-    $('ab-title').textContent  = it.name;
-    $('ab-artist').textContent = (it.artists || []).map(a => a.name).join(', ');
-    $('ab-album').textContent  = albumName;
     const url = it.album && it.album.images && it.album.images[0] && it.album.images[0].url;
     if(url){
       const img = $('art');
