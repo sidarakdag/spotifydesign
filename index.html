@@ -484,11 +484,19 @@
     100%{transform:translateX(100%);opacity:0;}
   }
   .art-front{position:relative;}
-  .art.swap .art-front img{animation:artIn .85s cubic-bezier(.22,1,.36,1) both;}
-  .art.swap .art-front > span.sweep{
-    position:absolute;inset:0;z-index:4;pointer-events:none;
-    background:linear-gradient(100deg, transparent 20%, rgba(76,123,255,.5) 50%, transparent 80%);
-    animation:sweep .9s cubic-bezier(.4,0,.2,1) both;
+  /* Spotify-style horizontal album slide (direction set via --dir in JS) */
+  @keyframes artSlideIn{
+    0%{opacity:.4;transform:translateX(calc(var(--dir,1) * 100%));}
+    100%{opacity:1;transform:translateX(0);}
+  }
+  @keyframes artSlideOut{
+    0%{opacity:1;transform:translateX(0);}
+    100%{opacity:0;transform:translateX(calc(var(--dir,1) * -100%));}
+  }
+  .art-front img.slide-in{animation:artSlideIn .5s cubic-bezier(.4,0,.2,1) both;}
+  .art-front .art-out{
+    position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1;
+    animation:artSlideOut .5s cubic-bezier(.4,0,.2,1) both;pointer-events:none;
   }
   .title.swap{animation:riseIn .6s cubic-bezier(.22,1,.36,1) both;}
   .artist.swap{animation:riseIn .6s cubic-bezier(.22,1,.36,1) .07s both;}
@@ -1812,6 +1820,8 @@ async function pollInner(){
   const url = it.album && it.album.images && it.album.images[0] && it.album.images[0].url;
   const imgEl = document.getElementById('art');
   if(url && imgEl && imgEl.getAttribute('data-src') !== url){
+    // remember the art that's leaving so the swap can slide it out
+    prevArtUrl = imgEl.getAttribute('data-src') ? imgEl.src : '';
     imgEl.setAttribute('data-src', url);
     imgEl.onload = function(){ try{ extract(imgEl); }catch(e){} };
     imgEl.src = url;
@@ -2124,6 +2134,7 @@ $('btn-play').onclick = async () => {
 };
 $('btn-next').onclick = async () => {
   buzz(8);
+  slideDir = 1;                       // next → new art enters from the right
   const r = await control('/me/player/next', { method:'POST' });
   if(!r.ok) toast(r.msg);
   st.pos = 0;
@@ -2131,6 +2142,7 @@ $('btn-next').onclick = async () => {
 };
 $('btn-prev').onclick = async () => {
   buzz(8);
+  slideDir = -1;                      // prev → new art enters from the left
   let r;
   if(st.pos > 4000){ st.pos = 0; r = await control('/me/player/seek?position_ms=0', { method:'PUT' }); }
   else { r = await control('/me/player/previous', { method:'POST' }); st.pos = 0; }
@@ -2589,24 +2601,44 @@ async function loadQueue(){
 $('btn-logout').onclick = () => { S.clear(); location.href = REDIRECT; };
 
 /* =========================================================================
-   TRACK CHANGE ANIMATION
+   TRACK CHANGE ANIMATION — a Spotify-style horizontal album slide, shown
+   only where the artwork is visible (Full/Simple skins, never Aura). The
+   outgoing cover slides away while the new one slides in; direction follows
+   next vs previous. Title + artist still rise+sharpen on every skin.
    ========================================================================= */
+let slideDir = 1, prevArtUrl = '';
+
 function swapAnim(){
-  const card = document.querySelector('.art');
+  const skin = document.body.dataset.skin;
   const front = document.querySelector('.art-front');
-  if(front){
-    const old = front.querySelector('span.sweep');
-    if(old) old.remove();
-    const span = document.createElement('span');
-    span.className = 'sweep';
-    front.appendChild(span);
-    setTimeout(() => span.remove(), 950);
+  const img = $('art');
+
+  if(skin !== 'aura' && front && img){
+    front.style.setProperty('--dir', slideDir);
+    // a copy of the art that's leaving, sliding out to the side
+    if(prevArtUrl){
+      const out = document.createElement('img');
+      out.className = 'art-out';
+      out.src = prevArtUrl;
+      out.setAttribute('aria-hidden', 'true');
+      out.addEventListener('animationend', () => out.remove());
+      front.appendChild(out);
+      setTimeout(() => { if(out.parentNode) out.remove(); }, 700);
+    }
+    // the incoming (real) art slides in from the other side
+    img.classList.remove('slide-in');
+    void img.offsetWidth;         // restart the animation
+    img.classList.add('slide-in');
+    setTimeout(() => img.classList.remove('slide-in'), 650);
   }
-  const targets = [card, $('title'), $('artist')];
+
+  slideDir = 1;                   // auto-advance defaults to "forward"
+
+  const targets = [$('title'), $('artist')];
   targets.forEach(el => {
     if(!el) return;
     el.classList.remove('swap');
-    void el.offsetWidth;          // force reflow so the animation replays
+    void el.offsetWidth;
     el.classList.add('swap');
   });
   setTimeout(() => targets.forEach(el => el && el.classList.remove('swap')), 1000);
