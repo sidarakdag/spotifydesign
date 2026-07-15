@@ -1164,17 +1164,39 @@ async function poll(){
 }
 
 let emptyPolls = 0;
+let DEBUG = true;   // temporary — shows raw poll status on screen
+
+function dbg(msg){
+  if(!DEBUG) return;
+  let el = document.getElementById('dbg');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'dbg';
+    el.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99;max-width:92vw;'+
+      'font:10px/1.4 monospace;color:#8AA8FF;background:rgba(0,0,0,.8);padding:6px 8px;'+
+      'border:1px solid #333;border-radius:6px;white-space:pre-wrap;pointer-events:none;';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+}
 
 async function pollInner(){
   let res = await api('/me/player');
   let d = (res.ok && res.data) ? res.data : null;
+  let via = 'player';
 
   // /me/player returns 204/empty when no device is "active" (e.g. you started
   // playback in the Spotify app, not through Connect). currently-playing still
   // reports the track in that case, so fall back to it.
   if(!d || !d.item){
     const cp = await api('/me/player/currently-playing');
-    if(cp.ok && cp.data && cp.data.item) d = cp.data;
+    if(cp.ok && cp.data && cp.data.item){ d = cp.data; via = 'current'; }
+    dbg('player: ' + res.status + (res.msg ? ' ' + res.msg : '') +
+        '\ncurrent: ' + cp.status + (cp.msg ? ' ' + cp.msg : '') +
+        '\nitem: ' + (d && d.item ? (d.item.name || '?') + ' [' + (d.currently_playing_type||'?') + ']' : 'none'));
+  } else {
+    dbg('player: ' + res.status + ' · ' + (d.item.name || '?') +
+        ' [' + (d.currently_playing_type||'?') + '] playing=' + d.is_playing);
   }
 
   if(!d || !d.item){
