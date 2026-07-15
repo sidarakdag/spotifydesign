@@ -548,12 +548,44 @@
   /* dim the heavy chrome so the space reads as the focus */
   body[data-skin="simple"] .transport{opacity:.96;}
 
+  /* =========================================================================
+     AURA SKIN — a glowing being floating in a cosmic void. Fixed cosmic
+     background (no photo). Player sits compact at the bottom.
+     ========================================================================= */
+  #aura{position:fixed;inset:0;z-index:0;display:none;pointer-events:none;}
+  body[data-skin="aura"] #aura{display:block;}
+  body[data-skin="aura"] #field,
+  body[data-skin="aura"] #stars,
+  body[data-skin="aura"] #artbg,
+  body[data-skin="aura"] #photo,
+  body[data-skin="aura"] #bloom{display:none !important;}
+  body[data-skin="aura"]{background:#000;}
+
+  /* player drops to the bottom, art hidden, text centered and airy */
+  body[data-skin="aura"] .stage{justify-content:flex-end;gap:var(--s3);}
+  body[data-skin="aura"] .art-wrap{display:none;}
+  body[data-skin="aura"] .now-row{display:block;}
+  body[data-skin="aura"] .meta{text-align:center;}
+  body[data-skin="aura"] .title{
+    font-size:clamp(20px,5.4vw,26px);text-shadow:0 0 30px rgba(140,170,255,.5);
+  }
+  body[data-skin="aura"] .artist{opacity:.8;}
+  body[data-skin="aura"] #cat{display:none;}       /* the being replaces the cat */
+  body[data-skin="aura"] .track::before,
+  body[data-skin="aura"] .vol-track::before{background:rgba(255,255,255,.12);}
+  body[data-skin="aura"] .topbar,
+  body[data-skin="aura"] .rail,
+  body[data-skin="aura"] .transport{
+    background:rgba(0,0,0,.15);backdrop-filter:blur(2px);border-radius:14px;
+  }
+
 </style>
 </head>
 <body class="paused">
 
 <canvas id="field"></canvas>
 <canvas id="stars"></canvas>
+<canvas id="aura"></canvas>
 <div id="artbg"></div>
 <div id="photo"></div>
 <div id="bloom"></div>
@@ -702,6 +734,7 @@
       <div class="set-actions">
         <button class="row-add skin-opt" data-skin="full">Full</button>
         <button class="row-add skin-opt" data-skin="simple">Simple</button>
+        <button class="row-add skin-opt" data-skin="aura">Aura</button>
       </div>
     </div>
     <div class="set-row">
@@ -1129,6 +1162,239 @@ const SF = (function(){
 
   return { resize: size };
 })();
+
+/* =========================================================================
+   AURA — a glowing humanoid being floating in a cosmic void. Only runs in
+   the Aura skin. Layers: nebula fog, particle field + dust, aurora ribbons,
+   god rays, the luminous figure (breathing, floating, rotating), and beat-
+   driven shockwaves + light bursts. Driven by the faked beat pulse.
+   ========================================================================= */
+const AU = (function(){
+  const cv = $('aura');
+  const ctx = cv.getContext('2d');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let w = 0, h = 0, dpr = 1, raf = null, last = performance.now(), t = 0;
+  let prevBeat = 0;
+  let flash = 0;                    // white flash amount on strong beats
+  const rings = [];                 // expanding shockwave rings
+  let dust = [], ribbons = [], fog = [];
+
+  function size(){
+    dpr = Math.min(devicePixelRatio || 1, 2);
+    w = innerWidth; h = innerHeight;
+    cv.width = w * dpr; cv.height = h * dpr;
+    cv.style.width = w + 'px'; cv.style.height = h + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    seed();
+  }
+  function seed(){
+    dust = Array.from({length: Math.round((w*h)/6000)}, () => ({
+      x: Math.random()*w, y: Math.random()*h,
+      z: Math.random(), tw: Math.random()*6.28
+    }));
+    ribbons = Array.from({length:4}, (_, i) => ({
+      y: h*0.2 + Math.random()*h*0.5,
+      amp: 30 + Math.random()*60,
+      len: 0.5 + Math.random()*1.5,
+      speed: 0.2 + Math.random()*0.4,
+      hue: [200, 275, 315, 190][i],
+      off: Math.random()*6.28
+    }));
+    fog = Array.from({length:5}, (_, i) => ({
+      x: Math.random()*w, y: h*0.3 + Math.random()*h*0.5,
+      r: 200 + Math.random()*260,
+      hue: [220, 260, 300, 190, 330][i],
+      dx: (Math.random()-.5)*6, dy:(Math.random()-.5)*4,
+      off: Math.random()*6.28
+    }));
+  }
+
+  // the glowing figure — a soft luminous humanoid built from layered blobs
+  function drawFigure(cx, cy, scale, beat, breath, spin){
+    // spin gives a subtle left-right turn by squashing horizontal width
+    const turn = Math.cos(spin);
+    const bodyW = scale * (0.42 + 0.05 * Math.abs(turn));
+
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    // ---- outer aura halo, swells on the beat ----
+    const auraR = scale * (1.5 + beat * 0.6);
+    let g = ctx.createRadialGradient(0, -scale*0.1, 0, 0, -scale*0.1, auraR);
+    g.addColorStop(0, 'rgba(200,220,255,' + (0.28 + beat*0.3).toFixed(3) + ')');
+    g.addColorStop(0.4, 'rgba(150,180,255,' + (0.12 + beat*0.15).toFixed(3) + ')');
+    g.addColorStop(1, 'rgba(120,150,255,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(0, -scale*0.1, auraR, 0, 6.2832); ctx.fill();
+
+    ctx.globalCompositeOperation = 'lighter';
+
+    // ---- body core: a stack of soft blobs forming a humanoid ----
+    const parts = [
+      { x:0,           y:-scale*0.62 + breath*0.3, r:scale*0.16, a:1 },     // head
+      { x:0,           y:-scale*0.30,              r:scale*0.20, a:0.95 },   // shoulders/chest
+      { x:0,           y:-scale*0.05 + breath,     r:scale*0.19, a:0.9 },    // torso (breathes)
+      { x:0,           y: scale*0.22,              r:scale*0.15, a:0.8 },    // hips
+      { x:-bodyW*0.9,  y:-scale*0.18,              r:scale*0.07, a:0.7 },    // left arm
+      { x: bodyW*0.9,  y:-scale*0.18,              r:scale*0.07, a:0.7 },    // right arm
+      { x:-scale*0.10, y: scale*0.55,              r:scale*0.09, a:0.75 },   // left leg
+      { x: scale*0.10, y: scale*0.55,              r:scale*0.09, a:0.75 },   // right leg
+    ];
+    for(const p of parts){
+      const px = p.x * (0.7 + 0.3*Math.abs(turn));    // horizontal squash for turn
+      const rr = p.r * (1 + beat*0.12);
+      const bg = ctx.createRadialGradient(px, p.y, 0, px, p.y, rr*2.4);
+      bg.addColorStop(0, 'rgba(255,255,255,' + (p.a).toFixed(3) + ')');
+      bg.addColorStop(0.5, 'rgba(230,240,255,' + (p.a*0.5).toFixed(3) + ')');
+      bg.addColorStop(1, 'rgba(180,200,255,0)');
+      ctx.fillStyle = bg;
+      ctx.beginPath(); ctx.arc(px, p.y, rr*2.4, 0, 6.2832); ctx.fill();
+    }
+
+    // ---- bright overexposed core down the spine ----
+    const core = ctx.createLinearGradient(0, -scale*0.7, 0, scale*0.6);
+    core.addColorStop(0, 'rgba(255,255,255,0)');
+    core.addColorStop(0.3, 'rgba(255,255,255,' + (0.9+beat*0.1).toFixed(3) + ')');
+    core.addColorStop(0.7, 'rgba(255,255,255,' + (0.8+beat*0.1).toFixed(3) + ')');
+    core.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = core;
+    ctx.beginPath();
+    ctx.ellipse(0, -scale*0.05, scale*0.10*(1+beat*0.15), scale*0.62, 0, 0, 6.2832);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function frame(now){
+    raf = requestAnimationFrame(frame);
+    try{ frameBody(now); }catch(e){ /* st/BEAT not ready on first frames — skip */ }
+  }
+  function frameBody(now){
+    if(document.body.dataset.skin !== 'aura'){ ctx.clearRect(0,0,w,h); return; }
+    let dt = (now - last) / 1000; last = now;
+    if(dt > 0.05) dt = 0.05;
+    t += dt;
+
+    const playing = st.playing;
+    const beat = playing ? BEAT.v : 0;
+
+    // beat edge → flash + shockwave ring + burst
+    if(beat > 0.7 && prevBeat <= 0.7){
+      flash = Math.min(1, flash + 0.5);
+      rings.push({ r: 40, a: 0.5 });
+    }
+    prevBeat = beat;
+    flash = Math.max(0, flash - dt * 2.2);
+
+    // ---- clear to deep black ----
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, w, h);
+
+    const cx = w * 0.5;
+    const cy = h * 0.46;
+
+    // ---- nebula fog (screen blend) ----
+    ctx.globalCompositeOperation = 'lighter';
+    for(const f of fog){
+      f.x += f.dx * dt; f.y += f.dy * dt;
+      if(f.x < -f.r) f.x = w + f.r; if(f.x > w + f.r) f.x = -f.r;
+      const pulse = 1 + beat * 0.25 + Math.sin(t*0.5 + f.off)*0.1;
+      const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r*pulse);
+      g.addColorStop(0, 'hsla(' + f.hue + ',80%,60%,' + (0.10 + beat*0.06).toFixed(3) + ')');
+      g.addColorStop(1, 'hsla(' + f.hue + ',80%,50%,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(f.x, f.y, f.r*pulse, 0, 6.2832); ctx.fill();
+    }
+
+    // ---- aurora ribbons ----
+    for(const rb of ribbons){
+      ctx.beginPath();
+      for(let x = 0; x <= w; x += 12){
+        const y = rb.y + Math.sin(x*0.006*rb.len + t*rb.speed + rb.off) * rb.amp * (1 + beat*0.4);
+        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = 'hsla(' + rb.hue + ',90%,65%,' + (0.06 + beat*0.05).toFixed(3) + ')';
+      ctx.lineWidth = 22 + beat*20;
+      ctx.stroke();
+    }
+
+    // ---- god rays from the figure ----
+    ctx.save();
+    ctx.translate(cx, cy - h*0.05);
+    const rayN = 12;
+    for(let i = 0; i < rayN; i++){
+      const a = (i / rayN) * 6.2832 + t*0.05;
+      const len = h * (0.5 + beat*0.3);
+      const g = ctx.createLinearGradient(0,0, Math.cos(a)*len, Math.sin(a)*len);
+      g.addColorStop(0, 'rgba(200,220,255,' + (0.05 + beat*0.06).toFixed(3) + ')');
+      g.addColorStop(1, 'rgba(200,220,255,0)');
+      ctx.strokeStyle = g; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(a)*len, Math.sin(a)*len); ctx.stroke();
+    }
+    ctx.restore();
+
+    // ---- dust / stars ----
+    for(const d of dust){
+      d.x -= (3 + d.z*10) * dt;
+      if(d.x < 0){ d.x = w; d.y = Math.random()*h; }
+      const tw = 0.5 + 0.5*Math.sin(t*(1+d.z*3) + d.tw);
+      ctx.fillStyle = 'rgba(210,225,255,' + ((0.2 + d.z*0.5)*tw*(0.7+beat*0.4)).toFixed(3) + ')';
+      ctx.fillRect(d.x, d.y, d.z*1.6+0.4, d.z*1.6+0.4);
+    }
+
+    // ---- shockwave rings ----
+    for(let i = rings.length-1; i >= 0; i--){
+      const rg = rings[i];
+      rg.r += dt * 420; rg.a -= dt * 0.9;
+      if(rg.a <= 0){ rings.splice(i,1); continue; }
+      ctx.strokeStyle = 'rgba(200,220,255,' + rg.a.toFixed(3) + ')';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, cy, rg.r, 0, 6.2832); ctx.stroke();
+    }
+
+    // ---- the being ----
+    ctx.globalCompositeOperation = 'lighter';
+    const scale = Math.min(w, h) * 0.34;
+    const breath = Math.sin(t*1.2) * scale*0.012;
+    const floatY = Math.sin(t*0.7) * 6;
+    const spin = t * 0.35;                 // slow continuous turn
+    drawFigure(cx, cy + floatY, scale, beat, breath, spin);
+
+    // ---- white flash on drops ----
+    ctx.globalCompositeOperation = 'lighter';
+    if(flash > 0.01){
+      ctx.fillStyle = 'rgba(255,255,255,' + (flash*0.25).toFixed(3) + ')';
+      ctx.fillRect(0,0,w,h);
+    }
+
+    // ---- film grain ----
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 0.03;
+    for(let i = 0; i < 40; i++){
+      ctx.fillStyle = Math.random() > 0.5 ? '#fff' : '#000';
+      ctx.fillRect(Math.random()*w, Math.random()*h, 1, 1);
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  addEventListener('resize', size);
+  setTimeout(size, 60);
+  if(!reduce){ last = performance.now(); raf = requestAnimationFrame(frame); }
+
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden){ cancelAnimationFrame(raf); raf = null; }
+    else if(!raf && !reduce){ last = performance.now(); raf = requestAnimationFrame(frame); }
+  });
+
+  return { resize: size };
+})();
+
+/* =========================================================================
+   PLAYER STATE
+   ========================================================================= */
+const st = { playing:false, pos:0, dur:0, id:null, shuffle:false, repeat:'off', vol:50, seeking:false };
+let volDrag = false;
 
 const fmt = ms => {
   const s = Math.max(0, Math.floor(ms/1000));
@@ -2186,6 +2452,8 @@ document.querySelectorAll('.skin-opt').forEach(b => {
     LOOK.skin = b.dataset.skin;
     document.body.dataset.skin = LOOK.skin;
     document.querySelectorAll('.skin-opt').forEach(x => x.classList.toggle('on', x === b));
+    // canvases measured 0 while their skin was hidden — resize on activation
+    setTimeout(() => { try{ AU.resize(); SF.resize(); D.resize(); }catch(e){} }, 30);
     buzz(8);
   };
 });
@@ -2212,7 +2480,7 @@ function enterApp(){
   // brief version stamp so we can confirm the latest file actually loaded
   (function(){
     const v = document.createElement('div');
-    v.textContent = 'build v7';
+    v.textContent = 'build v8';
     v.style.cssText = 'position:fixed;right:8px;top:calc(var(--safe-t) + 4px);z-index:99;'+
       'font:9px monospace;color:#4C7BFF;opacity:.7;pointer-events:none;';
     document.body.appendChild(v);
