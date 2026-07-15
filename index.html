@@ -1174,10 +1174,8 @@ const AU = (function(){
   const ctx = cv.getContext('2d');
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let w = 0, h = 0, dpr = 1, raf = null, last = performance.now(), t = 0;
-  let prevBeat = 0;
-  let flash = 0;                    // white flash amount on strong beats
-  const rings = [];                 // expanding shockwave rings
-  let dust = [], ribbons = [], fog = [];
+  let prevBeat = 0, drop = 0;
+  let pollen = [], flowers = [], fogBanks = [], trees = [];
 
   function size(){
     dpr = Math.min(devicePixelRatio || 1, 2);
@@ -1188,86 +1186,136 @@ const AU = (function(){
     seed();
   }
   function seed(){
-    dust = Array.from({length: Math.round((w*h)/6000)}, () => ({
+    const horizon = h * 0.6;
+    // floating pollen / dust motes
+    pollen = Array.from({length: Math.round((w*h)/7000)}, () => ({
       x: Math.random()*w, y: Math.random()*h,
-      z: Math.random(), tw: Math.random()*6.28
+      z: Math.random(),
+      drift: Math.random()*6.28,
+      tw: Math.random()*6.28
     }));
-    ribbons = Array.from({length:4}, (_, i) => ({
-      y: h*0.2 + Math.random()*h*0.5,
-      amp: 30 + Math.random()*60,
-      len: 0.5 + Math.random()*1.5,
-      speed: 0.2 + Math.random()*0.4,
-      hue: [200, 275, 315, 190][i],
+    // glowing flowers scattered on the ground (below horizon)
+    flowers = Array.from({length: Math.round(w/22)}, () => {
+      const depth = Math.random();                    // 0 far .. 1 near
+      return {
+        x: Math.random()*w,
+        y: horizon + depth*(h - horizon)*0.95 + 6,
+        depth,
+        hue: 200 + Math.random()*140,                 // blue..pink
+        tw: Math.random()*6.28
+      };
+    });
+    // soft fog banks that drift horizontally
+    fogBanks = Array.from({length:6}, (_, i) => ({
+      x: Math.random()*w,
+      y: horizon - 60 + Math.random()*160,
+      r: 180 + Math.random()*260,
+      hue: [212, 230, 260, 285, 195, 300][i],
+      dx: (Math.random()-.5)*5,
       off: Math.random()*6.28
     }));
-    fog = Array.from({length:5}, (_, i) => ({
-      x: Math.random()*w, y: h*0.3 + Math.random()*h*0.5,
-      r: 200 + Math.random()*260,
-      hue: [220, 260, 300, 190, 330][i],
-      dx: (Math.random()-.5)*6, dy:(Math.random()-.5)*4,
-      off: Math.random()*6.28
+    // distant tree silhouettes fading into fog along the horizon
+    trees = Array.from({length: Math.round(w/60)}, () => ({
+      x: Math.random()*w,
+      hgt: 30 + Math.random()*70,
+      wob: Math.random()*6.28
     }));
   }
 
-  // the glowing figure — a soft luminous humanoid built from layered blobs
-  function drawFigure(cx, cy, scale, beat, breath, spin){
-    // spin gives a subtle left-right turn by squashing horizontal width
-    const turn = Math.cos(spin);
-    const bodyW = scale * (0.42 + 0.05 * Math.abs(turn));
+  /* ---- the glowing being: a clear standing human silhouette ----
+     Built as a filled path (head, neck, shoulders, tapering torso, legs)
+     with layered bloom, not a stack of circles. cx/footY = feet position. */
+  function drawFigure(cx, footY, H, beat, breath, floatY, spin){
+    const turn = Math.cos(spin);                 // -1..1, drives width
+    const wide = 0.62 + 0.38 * Math.abs(turn);   // narrower when side-on
+    const S = H;                                 // total height
+    const cyMid = footY - S*0.5 + floatY;
 
     ctx.save();
-    ctx.translate(cx, cy);
+    ctx.translate(cx, floatY);
 
-    // ---- outer aura halo, swells on the beat ----
-    const auraR = scale * (1.5 + beat * 0.6);
-    let g = ctx.createRadialGradient(0, -scale*0.1, 0, 0, -scale*0.1, auraR);
-    g.addColorStop(0, 'rgba(200,220,255,' + (0.28 + beat*0.3).toFixed(3) + ')');
-    g.addColorStop(0.4, 'rgba(150,180,255,' + (0.12 + beat*0.15).toFixed(3) + ')');
-    g.addColorStop(1, 'rgba(120,150,255,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(0, -scale*0.1, auraR, 0, 6.2832); ctx.fill();
+    // proportional widths (fraction of height), scaled by turn
+    const headR = S*0.058;
+    const shoulderW = S*0.135 * wide;
+    const hipW = S*0.10 * wide;
+    const waistW = S*0.078 * wide;
+
+    // key Y positions from feet up
+    const yFeet = footY;
+    const yHip  = footY - S*0.46;
+    const yWaist= footY - S*0.55;
+    const yShld = footY - S*0.71;
+    const yNeck = footY - S*0.775;
+    const yHead = footY - S*0.83;
+    const yTop  = footY - S*0.885;
+
+    // ---- soft aura that spills into the scene, swells on beat ----
+    const auraR = S*0.75*(1 + beat*0.5 + drop*0.6);
+    let ag = ctx.createRadialGradient(0, cyMid, 0, 0, cyMid, auraR);
+    ag.addColorStop(0, 'rgba(210,225,255,'+(0.22+beat*0.28+drop*0.3).toFixed(3)+')');
+    ag.addColorStop(0.45,'rgba(150,185,255,'+(0.10+beat*0.12).toFixed(3)+')');
+    ag.addColorStop(1, 'rgba(120,150,255,0)');
+    ctx.fillStyle = ag;
+    ctx.beginPath(); ctx.arc(0, cyMid, auraR, 0, 6.2832); ctx.fill();
 
     ctx.globalCompositeOperation = 'lighter';
 
-    // ---- body core: a stack of soft blobs forming a humanoid ----
-    const parts = [
-      { x:0,           y:-scale*0.62 + breath*0.3, r:scale*0.16, a:1 },     // head
-      { x:0,           y:-scale*0.30,              r:scale*0.20, a:0.95 },   // shoulders/chest
-      { x:0,           y:-scale*0.05 + breath,     r:scale*0.19, a:0.9 },    // torso (breathes)
-      { x:0,           y: scale*0.22,              r:scale*0.15, a:0.8 },    // hips
-      { x:-bodyW*0.9,  y:-scale*0.18,              r:scale*0.07, a:0.7 },    // left arm
-      { x: bodyW*0.9,  y:-scale*0.18,              r:scale*0.07, a:0.7 },    // right arm
-      { x:-scale*0.10, y: scale*0.55,              r:scale*0.09, a:0.75 },   // left leg
-      { x: scale*0.10, y: scale*0.55,              r:scale*0.09, a:0.75 },   // right leg
-    ];
-    for(const p of parts){
-      const px = p.x * (0.7 + 0.3*Math.abs(turn));    // horizontal squash for turn
-      const rr = p.r * (1 + beat*0.12);
-      const bg = ctx.createRadialGradient(px, p.y, 0, px, p.y, rr*2.4);
-      bg.addColorStop(0, 'rgba(255,255,255,' + (p.a).toFixed(3) + ')');
-      bg.addColorStop(0.5, 'rgba(230,240,255,' + (p.a*0.5).toFixed(3) + ')');
-      bg.addColorStop(1, 'rgba(180,200,255,0)');
-      ctx.fillStyle = bg;
-      ctx.beginPath(); ctx.arc(px, p.y, rr*2.4, 0, 6.2832); ctx.fill();
+    // ---- build the body silhouette as one smooth path ----
+    function bodyPath(){
+      ctx.beginPath();
+      // left foot up the left side to waist
+      ctx.moveTo(-hipW*0.55, yFeet);
+      ctx.lineTo(-waistW, yWaist);
+      // waist out to shoulder (gentle curve, not a sharp flare)
+      ctx.quadraticCurveTo(-shoulderW*0.9, yShld + (yWaist-yShld)*0.3, -shoulderW, yShld);
+      // shoulder up into the neck
+      ctx.quadraticCurveTo(-shoulderW*0.5, yNeck, -headR*0.9, yNeck);
+      // round head (two symmetric curves over the top)
+      ctx.quadraticCurveTo(-headR*1.25, yNeck - (yNeck-yHead)*0.5, -headR*0.9, yHead);
+      ctx.quadraticCurveTo(-headR*0.5, yTop, 0, yTop);
+      ctx.quadraticCurveTo(headR*0.5, yTop, headR*0.9, yHead);
+      ctx.quadraticCurveTo(headR*1.25, yNeck - (yNeck-yHead)*0.5, headR*0.9, yNeck);
+      // right side mirror down to waist
+      ctx.quadraticCurveTo(shoulderW*0.5, yNeck, shoulderW, yShld);
+      ctx.quadraticCurveTo(shoulderW*0.9, yShld + (yWaist-yShld)*0.3, waistW, yWaist);
+      ctx.lineTo(hipW*0.55, yFeet);
+      // between the legs
+      ctx.lineTo(hipW*0.16, yFeet);
+      ctx.lineTo(hipW*0.16, yHip);
+      ctx.lineTo(-hipW*0.16, yHip);
+      ctx.lineTo(-hipW*0.16, yFeet);
+      ctx.closePath();
     }
 
-    // ---- bright overexposed core down the spine ----
-    const core = ctx.createLinearGradient(0, -scale*0.7, 0, scale*0.6);
-    core.addColorStop(0, 'rgba(255,255,255,0)');
-    core.addColorStop(0.3, 'rgba(255,255,255,' + (0.9+beat*0.1).toFixed(3) + ')');
-    core.addColorStop(0.7, 'rgba(255,255,255,' + (0.8+beat*0.1).toFixed(3) + ')');
-    core.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = core;
-    ctx.beginPath();
-    ctx.ellipse(0, -scale*0.05, scale*0.10*(1+beat*0.15), scale*0.62, 0, 0, 6.2832);
-    ctx.fill();
+    // outer soft glow of the body (blurred feel via layered fills)
+    for(let pass = 0; pass < 3; pass++){
+      const spread = [1.5, 1.22, 1][pass];
+      const alpha = [0.10+beat*0.05, 0.22, 0.85+beat*0.15][pass];
+      ctx.save();
+      ctx.scale(spread, spread + (pass<2?0.02:0));
+      bodyPath();
+      const grad = ctx.createLinearGradient(0, yTop, 0, yFeet);
+      grad.addColorStop(0, 'rgba(255,255,255,'+alpha.toFixed(3)+')');
+      grad.addColorStop(0.5,'rgba(240,246,255,'+alpha.toFixed(3)+')');
+      grad.addColorStop(1, 'rgba(210,225,255,'+(alpha*0.5).toFixed(3)+')');
+      ctx.fillStyle = grad;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // brightest overexposed core (head + chest hotspots)
+    const hot = ctx.createRadialGradient(0, yShld+ (yHead-yShld)*0.3, 0, 0, yShld, S*0.22*(1+beat*0.2));
+    hot.addColorStop(0, 'rgba(255,255,255,'+(0.95).toFixed(3)+')');
+    hot.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = hot;
+    ctx.beginPath(); ctx.arc(0, yShld, S*0.22*(1+beat*0.2), 0, 6.2832); ctx.fill();
 
     ctx.restore();
   }
 
   function frame(now){
     raf = requestAnimationFrame(frame);
-    try{ frameBody(now); }catch(e){ /* st/BEAT not ready on first frames — skip */ }
+    try{ frameBody(now); }catch(e){ /* not ready on first frames */ }
   }
   function frameBody(now){
     if(document.body.dataset.skin !== 'aura'){ ctx.clearRect(0,0,w,h); return; }
@@ -1278,99 +1326,125 @@ const AU = (function(){
     const playing = st.playing;
     const beat = playing ? BEAT.v : 0;
 
-    // beat edge → flash + shockwave ring + burst
-    if(beat > 0.7 && prevBeat <= 0.7){
-      flash = Math.min(1, flash + 0.5);
-      rings.push({ r: 40, a: 0.5 });
-    }
+    // "drop" — a slow-decaying surge triggered on strong beats
+    if(beat > 0.7 && prevBeat <= 0.7) drop = Math.min(1, drop + 0.5);
     prevBeat = beat;
-    flash = Math.max(0, flash - dt * 2.2);
+    drop = Math.max(0, drop - dt * 1.4);
 
-    // ---- clear to deep black ----
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, w, h);
-
+    const horizon = h * 0.6;
     const cx = w * 0.5;
-    const cy = h * 0.46;
 
-    // ---- nebula fog (screen blend) ----
+    // ===== SKY: vertical gradient, deep top → glowing horizon =====
+    const sky = ctx.createLinearGradient(0, 0, 0, horizon);
+    sky.addColorStop(0, '#05060f');
+    sky.addColorStop(0.55, '#0a0b22');
+    sky.addColorStop(1, 'hsl(230,60%,'+(14+beat*8+drop*10)+'%)');    // horizon glows on beat
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, w, horizon + 2);
+
+    // ===== GROUND: darker, cool =====
+    const ground = ctx.createLinearGradient(0, horizon, 0, h);
+    ground.addColorStop(0, 'hsl(225,45%,'+(10+beat*6)+'%)');
+    ground.addColorStop(1, '#03040a');
+    ctx.fillStyle = ground;
+    ctx.fillRect(0, horizon, w, h - horizon);
+
     ctx.globalCompositeOperation = 'lighter';
-    for(const f of fog){
-      f.x += f.dx * dt; f.y += f.dy * dt;
+
+    // ===== AURORA in the sky — soft vertical curtains, not lines =====
+    for(let i = 0; i < 3; i++){
+      const baseX = (w*0.2) + i*(w*0.3) + Math.sin(t*0.15 + i)*w*0.06;
+      const hue = [210, 265, 300][i];
+      const g = ctx.createLinearGradient(baseX, 0, baseX, horizon);
+      const a = (0.05 + beat*0.06 + drop*0.08);
+      g.addColorStop(0, 'hsla('+hue+',85%,60%,0)');
+      g.addColorStop(0.5,'hsla('+hue+',85%,62%,'+a.toFixed(3)+')');
+      g.addColorStop(1, 'hsla('+hue+',85%,60%,0)');
+      ctx.fillStyle = g;
+      const sway = Math.sin(t*0.3 + i)*w*0.04;
+      ctx.beginPath();
+      ctx.moveTo(baseX - w*0.14 + sway, 0);
+      ctx.quadraticCurveTo(baseX + sway, horizon*0.5, baseX - w*0.05 + sway, horizon);
+      ctx.lineTo(baseX + w*0.05 + sway, horizon);
+      ctx.quadraticCurveTo(baseX + w*0.12 + sway, horizon*0.5, baseX + w*0.14 + sway, 0);
+      ctx.closePath(); ctx.fill();
+    }
+
+    // ===== distant tree line fading into fog =====
+    ctx.globalCompositeOperation = 'source-over';
+    for(const tr of trees){
+      const wob = Math.sin(t*0.4 + tr.wob)*1.5;
+      ctx.fillStyle = 'rgba(6,10,26,0.7)';
+      ctx.beginPath();
+      ctx.moveTo(tr.x - 6 + wob, horizon);
+      ctx.lineTo(tr.x + wob, horizon - tr.hgt);
+      ctx.lineTo(tr.x + 6 + wob, horizon);
+      ctx.closePath(); ctx.fill();
+    }
+
+    // ===== FOG BANKS drifting across the horizon (screen blend) =====
+    ctx.globalCompositeOperation = 'lighter';
+    for(const f of fogBanks){
+      f.x += f.dx * dt;
       if(f.x < -f.r) f.x = w + f.r; if(f.x > w + f.r) f.x = -f.r;
-      const pulse = 1 + beat * 0.25 + Math.sin(t*0.5 + f.off)*0.1;
+      const pulse = 1 + beat*0.2 + drop*0.3 + Math.sin(t*0.4 + f.off)*0.08;
       const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r*pulse);
-      g.addColorStop(0, 'hsla(' + f.hue + ',80%,60%,' + (0.10 + beat*0.06).toFixed(3) + ')');
-      g.addColorStop(1, 'hsla(' + f.hue + ',80%,50%,0)');
+      g.addColorStop(0, 'hsla('+f.hue+',75%,60%,'+(0.09+beat*0.05+drop*0.06).toFixed(3)+')');
+      g.addColorStop(1, 'hsla('+f.hue+',75%,50%,0)');
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.arc(f.x, f.y, f.r*pulse, 0, 6.2832); ctx.fill();
     }
 
-    // ---- aurora ribbons ----
-    for(const rb of ribbons){
-      ctx.beginPath();
-      for(let x = 0; x <= w; x += 12){
-        const y = rb.y + Math.sin(x*0.006*rb.len + t*rb.speed + rb.off) * rb.amp * (1 + beat*0.4);
-        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      }
-      ctx.strokeStyle = 'hsla(' + rb.hue + ',90%,65%,' + (0.06 + beat*0.05).toFixed(3) + ')';
-      ctx.lineWidth = 22 + beat*20;
-      ctx.stroke();
+    // ===== glowing flowers on the ground =====
+    for(const fl of flowers){
+      const tw = 0.5 + 0.5*Math.sin(t*1.5 + fl.tw);
+      const glow = (0.25 + fl.depth*0.5) * (tw*0.6 + 0.4) * (1 + beat*0.7 + drop*0.6);
+      const r = (1.5 + fl.depth*3) * (1 + beat*0.3);
+      const g = ctx.createRadialGradient(fl.x, fl.y, 0, fl.x, fl.y, r*4);
+      g.addColorStop(0, 'hsla('+fl.hue+',90%,80%,'+Math.min(0.9,glow).toFixed(3)+')');
+      g.addColorStop(1, 'hsla('+fl.hue+',90%,70%,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(fl.x, fl.y, r*4, 0, 6.2832); ctx.fill();
+      // bright center
+      ctx.fillStyle = 'rgba(255,255,255,'+Math.min(0.9,glow).toFixed(3)+')';
+      ctx.beginPath(); ctx.arc(fl.x, fl.y, r*0.5, 0, 6.2832); ctx.fill();
     }
 
-    // ---- god rays from the figure ----
-    ctx.save();
-    ctx.translate(cx, cy - h*0.05);
-    const rayN = 12;
-    for(let i = 0; i < rayN; i++){
-      const a = (i / rayN) * 6.2832 + t*0.05;
-      const len = h * (0.5 + beat*0.3);
-      const g = ctx.createLinearGradient(0,0, Math.cos(a)*len, Math.sin(a)*len);
-      g.addColorStop(0, 'rgba(200,220,255,' + (0.05 + beat*0.06).toFixed(3) + ')');
-      g.addColorStop(1, 'rgba(200,220,255,0)');
-      ctx.strokeStyle = g; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(a)*len, Math.sin(a)*len); ctx.stroke();
-    }
-    ctx.restore();
-
-    // ---- dust / stars ----
-    for(const d of dust){
-      d.x -= (3 + d.z*10) * dt;
-      if(d.x < 0){ d.x = w; d.y = Math.random()*h; }
-      const tw = 0.5 + 0.5*Math.sin(t*(1+d.z*3) + d.tw);
-      ctx.fillStyle = 'rgba(210,225,255,' + ((0.2 + d.z*0.5)*tw*(0.7+beat*0.4)).toFixed(3) + ')';
-      ctx.fillRect(d.x, d.y, d.z*1.6+0.4, d.z*1.6+0.4);
+    // ===== floating pollen / dust =====
+    for(const p of pollen){
+      p.x += Math.sin(t*0.3 + p.drift) * 4 * dt * (0.5 + p.z);
+      p.y -= (2 + p.z*6) * dt;                     // drift gently upward
+      if(p.y < 0){ p.y = h; p.x = Math.random()*w; }
+      const tw = 0.5 + 0.5*Math.sin(t*(1.5+p.z*2) + p.tw);
+      const a = (0.15 + p.z*0.5) * tw * (0.6 + beat*0.6);
+      ctx.fillStyle = 'rgba(220,232,255,'+a.toFixed(3)+')';
+      const s = p.z*2 + 0.5;
+      ctx.beginPath(); ctx.arc(p.x, p.y, s, 0, 6.2832); ctx.fill();
     }
 
-    // ---- shockwave rings ----
-    for(let i = rings.length-1; i >= 0; i--){
-      const rg = rings[i];
-      rg.r += dt * 420; rg.a -= dt * 0.9;
-      if(rg.a <= 0){ rings.splice(i,1); continue; }
-      ctx.strokeStyle = 'rgba(200,220,255,' + rg.a.toFixed(3) + ')';
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(cx, cy, rg.r, 0, 6.2832); ctx.stroke();
-    }
+    // ===== the being =====
+    const H = Math.min(w*1.6, h) * 0.5;
+    const footY = horizon + (h-horizon)*0.28;       // stands just past the horizon
+    const breath = Math.sin(t*1.1) * H*0.006;
+    const floatY = Math.sin(t*0.6) * 6;
+    const spin = t * (6.2832 / 25);                 // full turn ~25s
+    drawFigure(cx, footY, H, beat, breath, floatY, spin);
 
-    // ---- the being ----
-    ctx.globalCompositeOperation = 'lighter';
-    const scale = Math.min(w, h) * 0.34;
-    const breath = Math.sin(t*1.2) * scale*0.012;
-    const floatY = Math.sin(t*0.7) * 6;
-    const spin = t * 0.35;                 // slow continuous turn
-    drawFigure(cx, cy + floatY, scale, beat, breath, spin);
-
-    // ---- white flash on drops ----
-    ctx.globalCompositeOperation = 'lighter';
-    if(flash > 0.01){
-      ctx.fillStyle = 'rgba(255,255,255,' + (flash*0.25).toFixed(3) + ')';
+    // ===== drop flash — sky briefly electric, whole world brightens =====
+    if(drop > 0.02){
+      ctx.globalCompositeOperation = 'lighter';
+      const fg = ctx.createLinearGradient(0,0,0,h);
+      fg.addColorStop(0, 'hsla(265,90%,60%,'+(drop*0.10).toFixed(3)+')');
+      fg.addColorStop(0.6,'hsla(210,90%,60%,'+(drop*0.08).toFixed(3)+')');
+      fg.addColorStop(1, 'hsla(210,90%,60%,0)');
+      ctx.fillStyle = fg;
       ctx.fillRect(0,0,w,h);
     }
 
-    // ---- film grain ----
+    // ===== film grain + haze =====
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = 0.03;
-    for(let i = 0; i < 40; i++){
+    ctx.globalAlpha = 0.025;
+    for(let i = 0; i < 36; i++){
       ctx.fillStyle = Math.random() > 0.5 ? '#fff' : '#000';
       ctx.fillRect(Math.random()*w, Math.random()*h, 1, 1);
     }
@@ -2480,7 +2554,7 @@ function enterApp(){
   // brief version stamp so we can confirm the latest file actually loaded
   (function(){
     const v = document.createElement('div');
-    v.textContent = 'build v8';
+    v.textContent = 'build v9';
     v.style.cssText = 'position:fixed;right:8px;top:calc(var(--safe-t) + 4px);z-index:99;'+
       'font:9px monospace;color:#4C7BFF;opacity:.7;pointer-events:none;';
     document.body.appendChild(v);
