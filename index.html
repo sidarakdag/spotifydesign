@@ -207,7 +207,7 @@
 
   /* ---------- scrubber ---------- */
   .scrub{display:flex;flex-direction:column;gap:0;}
-  #cat{display:block;width:100%;height:40px;margin-bottom:-4px;}
+  #cat{display:block;width:100%;height:52px;margin-bottom:-8px;}
   .track{position:relative;height:26px;display:flex;align-items:center;cursor:pointer;touch-action:none;}
   .track::before{
     content:"";position:absolute;left:0;right:0;height:3px;border-radius:3px;
@@ -1053,14 +1053,33 @@ const BEAT = { v: 0, bpm: 120 };
 })();
 
 /* =========================================================================
-   CAT — sits on the timeline riding the playhead, fur puffing on the beat.
-   Colored by the album art. Curls up and sleeps when paused.
+   CAT — the signature mascot. Rides the playhead on the timeline.
+   Monochrome white with a soft blue glow (#8AA8FF). Breathes, blinks, sways
+   its tail, walks with real paw steps, floats, and trails light while moving.
+   States: playing = strolls · paused = sits · ended = curls up asleep.
+   All motion is spring-eased; nothing snaps.
    ========================================================================= */
 const D = (function(){
   const cv = $('cat');
   const ctx = cv.getContext('2d');
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let w = 0, h = 40, dpr = 1, t = 0, raf = null;
+  const GLOW = '#8AA8FF';
+  const WHITE = '#F7F9FF';
+
+  let w = 0, h = 52, dpr = 1, raf = null;
+  let last = performance.now();
+  let t = 0;
+
+  // spring-tracked horizontal position so the cat glides, never jumps
+  let px = null, pvx = 0;
+  // eased state scalars: 1 = fully in that posture
+  let sit = 0, sleep = 0, moving = 0;
+  // walk cycle phase, advances only while actually travelling
+  let gait = 0;
+  // blink: a short closure fired every few seconds
+  let blinkT = 3, blink = 0;
+  // trail of recent positions for the light wisp behind the tail
+  const trail = [];
 
   function size(){
     const r = cv.getBoundingClientRect();
@@ -1072,117 +1091,275 @@ const D = (function(){
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  function drawCat(x, ground, puff, live, color, dim){
-    const s = 1;                     // base scale
-    const bob = puff * 2.4;          // whole body lifts a touch on the beat
-    const cy = ground - bob;
+  const spring = (cur, target, vel, k, d, dt) => {
+    const f = (target - cur) * k;
+    vel = (vel + f * dt) * Math.pow(d, dt * 60);
+    return [cur + vel * dt, vel];
+  };
+  const ease = (cur, target, rate, dt) => cur + (target - cur) * Math.min(1, rate * dt);
 
-    ctx.strokeStyle = color;
-    ctx.fillStyle = color;
-    ctx.lineWidth = 1.7;
+  /* ---- the mascot, drawn around an origin at its paws ----
+     scale ~ maps the whole cat to about 26px tall. Everything is Bezier. */
+  function drawCat(cx, groundY, s, o){
+    // o holds the live pose: breath, float, tailSway, legPhase, earPerk, eyeOpen, blinkAmt, curl
+    const bodyY = groundY - (10 * s) - o.float - o.breath;   // top of the back
+    const glowPulse = 0.6 + 0.4 * (st.playing ? BEAT.v : 0);
+
+    // ---------- ground glow under the paws ----------
+    const grad = ctx.createRadialGradient(cx, groundY + 1, 0, cx, groundY + 1, 16 * s);
+    grad.addColorStop(0, 'rgba(138,168,255,' + (0.28 * glowPulse).toFixed(3) + ')');
+    grad.addColorStop(1, 'rgba(138,168,255,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.ellipse(cx, groundY + 1, 16 * s, 4.5 * s, 0, 0, 6.2832);
+    ctx.fill();
+
+    // shared stroke style — perfect line consistency
+    ctx.strokeStyle = WHITE;
+    ctx.fillStyle = WHITE;
+    ctx.lineWidth = 1.6 * s;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+    ctx.shadowColor = GLOW;
+    ctx.shadowBlur = (5 + glowPulse * 5) * s;
 
-    // ---- tail: sways with time, flicks up with the beat ----
+    const curl = o.curl;   // 0 awake upright ... 1 curled asleep
+
+    // ---------- tail: a smooth Bezier that sways, with a light trail ----------
+    // trail wisp first, behind everything
+    if(o.trailStrength > 0.02 && trail.length > 1){
+      ctx.save();
+      ctx.shadowBlur = 8 * s;
+      for(let i = 1; i < trail.length; i++){
+        const a = (i / trail.length) * 0.35 * o.trailStrength;
+        ctx.strokeStyle = 'rgba(138,168,255,' + a.toFixed(3) + ')';
+        ctx.lineWidth = (2.4 * (i / trail.length)) * s;
+        ctx.beginPath();
+        ctx.moveTo(trail[i-1].x, groundY - 6 * s);
+        ctx.lineTo(trail[i].x, groundY - 6 * s);
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.strokeStyle = WHITE;
+      ctx.lineWidth = 1.6 * s;
+    }
+
+    const tailBaseX = cx - 8 * s;
+    const tailBaseY = bodyY + 6 * s;
+    const sway = o.tailSway;
     ctx.beginPath();
-    const tailBase = x - 9 * s;
-    const sway = Math.sin(t * 2) * 3;
-    ctx.moveTo(tailBase, cy - 1);
-    ctx.quadraticCurveTo(
-      tailBase - 6, cy - 4 - puff * 3,
-      tailBase - 5 + sway, cy - 11 - puff * 6
+    ctx.moveTo(tailBaseX, tailBaseY);
+    if(curl < 0.5){
+      // upright S-curl tail
+      ctx.bezierCurveTo(
+        tailBaseX - 6 * s, tailBaseY - 1 * s,
+        tailBaseX - 9 * s + sway, tailBaseY - 6 * s,
+        tailBaseX - 6 * s + sway * 1.6, tailBaseY - 12 * s
+      );
+    }else{
+      // curled around the body when asleep
+      ctx.bezierCurveTo(
+        tailBaseX - 4 * s, tailBaseY + 3 * s,
+        cx + 6 * s, tailBaseY + 5 * s,
+        cx + 9 * s, tailBaseY - 1 * s
+      );
+    }
+    ctx.stroke();
+
+    // ---------- body: one continuous smooth silhouette ----------
+    // when awake it's an arched back into a seated/standing rear;
+    // when asleep it flattens into a rounded loaf.
+    const backLift = 8 * s * (1 - curl * 0.5);
+    ctx.beginPath();
+    ctx.moveTo(cx - 8 * s, groundY - 2 * s);                       // rear paw area
+    ctx.bezierCurveTo(
+      cx - 9 * s, bodyY + 2 * s,
+      cx - 7 * s, bodyY - backLift * 0.3,
+      cx - 2 * s, bodyY - backLift * 0.2                            // top of back
+    );
+    ctx.bezierCurveTo(
+      cx + 4 * s, bodyY - backLift * 0.35,
+      cx + 8 * s, bodyY - 1 * s,
+      cx + 9 * s, groundY - 3 * s                                   // chest down to front paws
     );
     ctx.stroke();
 
-    // ---- body: a low crouched arc ----
+    // ---------- head: clean circle-ish Bezier at the front ----------
+    const hx = cx + 9 * s - curl * 3 * s;
+    const hy = bodyY - (2 * s) * (1 - curl) + curl * 4 * s;
+    const hr = 4.4 * s;
     ctx.beginPath();
-    ctx.moveTo(x - 9 * s, cy);
-    ctx.quadraticCurveTo(x - 4 * s, cy - 8 * s, x, cy - 8 * s);
-    ctx.quadraticCurveTo(x + 6 * s, cy - 8 * s, x + 8 * s, cy - 1 * s);
+    // near-circular head from four Beziers for smoothness
+    ctx.moveTo(hx, hy - hr);
+    ctx.bezierCurveTo(hx + hr*1.3, hy - hr, hx + hr*1.3, hy + hr, hx, hy + hr);
+    ctx.bezierCurveTo(hx - hr*1.3, hy + hr, hx - hr*1.3, hy - hr, hx, hy - hr);
     ctx.stroke();
 
-    // ---- fur: spikes along the back that stand up on the beat ----
-    const spikes = 7;
-    ctx.lineWidth = 1.1;
-    for(let i = 0; i < spikes; i++){
-      const f = i / (spikes - 1);
-      const bx = x - 8 * s + f * 15 * s;
-      // arc height of the back at this point
-      const by = cy - 8 * s + Math.pow(Math.abs(f - 0.5) * 2, 2) * 5;
-      const up = (2 + puff * 6) * (0.5 + 0.5 * Math.sin(f * 6 + t * 3));
-      ctx.beginPath();
-      ctx.moveTo(bx, by);
-      ctx.lineTo(bx - 0.5, by - up);
-      ctx.stroke();
-    }
-    ctx.lineWidth = 1.7;
-
-    // ---- head: circle at the front-right ----
-    const hx = x + 9 * s, hy = cy - 4 * s;
+    // ---------- ears: slightly large, smooth, gently perked ----------
+    const perk = o.earPerk;
+    const earH = (5.2 + perk * 1.4) * s;
+    // left ear
     ctx.beginPath();
-    ctx.arc(hx, hy, 4 * s, 0, 6.2832);
+    ctx.moveTo(hx - 3.2 * s, hy - hr * 0.8);
+    ctx.quadraticCurveTo(hx - 4.2 * s, hy - hr - earH, hx - 0.6 * s, hy - hr * 0.9);
+    ctx.stroke();
+    // right ear
+    ctx.beginPath();
+    ctx.moveTo(hx + 3.2 * s, hy - hr * 0.8);
+    ctx.quadraticCurveTo(hx + 4.2 * s, hy - hr - earH, hx + 0.6 * s, hy - hr * 0.9);
     ctx.stroke();
 
-    // ---- ears: two triangles, perk up on the beat ----
-    const ear = 2.5 + puff * 2.5;
-    ctx.beginPath();
-    ctx.moveTo(hx - 2.5, hy - 3); ctx.lineTo(hx - 3, hy - 3 - ear); ctx.lineTo(hx - 0.6, hy - 3.4);
-    ctx.moveTo(hx + 2.5, hy - 3); ctx.lineTo(hx + 3, hy - 3 - ear); ctx.lineTo(hx + 0.6, hy - 3.4);
-    ctx.stroke();
-
-    // ---- legs: little standing lines ----
-    ctx.beginPath();
-    ctx.moveTo(x - 5 * s, cy - 1); ctx.lineTo(x - 5 * s, ground);
-    ctx.moveTo(x + 5 * s, cy - 1); ctx.lineTo(x + 5 * s, ground);
-    ctx.stroke();
-
-    // ---- eye: a bright dot open when awake, closed when asleep ----
-    if(live){
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(hx + 1.5, hy - 0.5, 0.9, 0, 6.2832);
-      ctx.fill();
+    // ---------- face: eyes + tiny whiskers ----------
+    const eyeOpen = o.eyeOpen * (1 - o.blinkAmt);
+    if(!o.asleep && eyeOpen > 0.08){
+      ctx.save();
+      ctx.shadowBlur = 4 * s;
+      ctx.fillStyle = WHITE;
+      const ew = 0.9 * s, eh = 1.5 * s * eyeOpen;
+      ctx.beginPath(); ctx.ellipse(hx - 1.6 * s, hy - 0.3 * s, ew, eh, 0, 0, 6.2832); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(hx + 2.2 * s, hy - 0.3 * s, ew, eh, 0, 0, 6.2832); ctx.fill();
+      ctx.restore();
     }else{
+      // closed / blinking / asleep — soft downward arcs
+      ctx.lineWidth = 1.2 * s;
       ctx.beginPath();
-      ctx.moveTo(hx, hy); ctx.lineTo(hx + 3, hy);   // closed eye
+      ctx.moveTo(hx - 2.4 * s, hy - 0.3 * s); ctx.quadraticCurveTo(hx - 1.6 * s, hy + 0.9 * s, hx - 0.8 * s, hy - 0.3 * s);
+      ctx.moveTo(hx + 1.4 * s, hy - 0.3 * s); ctx.quadraticCurveTo(hx + 2.2 * s, hy + 0.9 * s, hx + 3.0 * s, hy - 0.3 * s);
       ctx.stroke();
+      ctx.lineWidth = 1.6 * s;
     }
+    // nose
+    ctx.beginPath();
+    ctx.arc(hx + 0.3 * s, hy + 1.6 * s, 0.5 * s, 0, 6.2832);
+    ctx.fill();
+
+    // ---------- legs & walking paws ----------
+    if(curl < 0.5){
+      const stand = 1 - o.sitAmt;                 // 1 standing, 0 sitting
+      const step = o.legPhase;                    // -1..1 walk swing
+      const frontX = cx + 5.5 * s, rearX = cx - 5 * s;
+      const hipY = groundY - 3 * s;
+
+      ctx.lineWidth = 1.6 * s;
+
+      if(stand > 0.5){
+        // ---- standing / walking: two visible legs swinging in opposition ----
+        ctx.beginPath();
+        ctx.moveTo(rearX, hipY);
+        ctx.lineTo(rearX - step * 1.6 * s, groundY);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(frontX, hipY);
+        ctx.lineTo(frontX + step * 1.6 * s, groundY);
+        ctx.stroke();
+        // faint second pair for a four-paw stride while moving
+        if(o.trailStrength > 0.05){
+          ctx.globalAlpha = 0.5;
+          ctx.beginPath();
+          ctx.moveTo(frontX - 2 * s, hipY);
+          ctx.lineTo(frontX - 2 * s - step * 1.6 * s, groundY);
+          ctx.moveTo(rearX + 2 * s, hipY);
+          ctx.lineTo(rearX + 2 * s + step * 1.6 * s, groundY);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+      }else{
+        // ---- sitting: front paws tuck straight down together, haunch settles ----
+        const tuck = o.sitAmt;
+        // two neat front paws close together
+        ctx.beginPath();
+        ctx.moveTo(cx + 3 * s, hipY + tuck * 1.5 * s);
+        ctx.lineTo(cx + 3 * s, groundY);
+        ctx.moveTo(cx + 5.5 * s, hipY + tuck * 1.5 * s);
+        ctx.lineTo(cx + 5.5 * s, groundY);
+        ctx.stroke();
+        // rounded haunch curve at the rear instead of a dangling leg
+        ctx.beginPath();
+        ctx.moveTo(cx - 8 * s, groundY - 2 * s);
+        ctx.quadraticCurveTo(cx - 8.5 * s, groundY, cx - 4 * s, groundY);
+        ctx.stroke();
+      }
+    }
+
+    ctx.shadowBlur = 0;
   }
 
-  function frame(){
+  function frame(now){
     raf = requestAnimationFrame(frame);
     if(!w){ size(); return; }
+    let dt = (now - last) / 1000; last = now;
+    if(dt > 0.05) dt = 0.05;            // clamp after tab-away
+    t += dt;
 
-    t += 0.03;
     ctx.clearRect(0, 0, w, h);
 
-    const ground = h - 3;
+    const groundY = h - 10;
+    const s = 1.05;
     const prog = st.dur ? st.pos / st.dur : 0;
-    const live = st.playing;
-    const x = 10 + prog * (w - 20);       // the cat rides the playhead
+    const margin = 16;
+    const targetX = margin + prog * (w - margin * 2);
 
-    const puff = live ? BEAT.v : 0;
+    if(px === null) px = targetX;
+    const before = px;
+    [px, pvx] = spring(px, targetX, pvx, 9, 0.72, dt);
 
-    // color from album art, dimming to grey when asleep
-    const hue = ACC.h1, sat = ACC.s1 * 100, lit = Math.min(72, ACC.l1 * 100 + 6);
-    const color = live
-      ? 'hsl(' + hue.toFixed(0) + ' ' + sat.toFixed(0) + '% ' + lit.toFixed(0) + '% / 0.95)'
-      : 'rgba(138,138,150,0.4)';
+    // the cat's body spans ~15px each side of the origin; keep it fully on-canvas
+    const drawX = Math.max(15, Math.min(w - 15, px));
 
-    ctx.shadowColor = 'hsl(' + hue.toFixed(0) + ' ' + sat.toFixed(0) + '% ' + lit.toFixed(0) + '%)';
-    ctx.shadowBlur = live ? 6 + puff * 8 : 0;
+    // how fast we're actually travelling → drives walk + trail
+    const speed = Math.abs(px - before) / (dt || 0.016);
+    const travelling = speed > 6;
 
-    drawCat(x, ground, puff, live, color);
-    ctx.shadowBlur = 0;
+    // ---- state easing ----
+    const ended = st.dur > 0 && st.pos >= st.dur - 1200 && !st.playing;
+    const paused = !st.playing && !ended;
+    sleep = ease(sleep, ended ? 1 : 0, 3, dt);
+    sit   = ease(sit,   paused ? 1 : 0, 6, dt);
+    moving = ease(moving, (st.playing || travelling) ? 1 : 0, 8, dt);
+
+    // gait advances with travel while playing, plus a slow idle stroll when playing in place
+    const strollRate = st.playing ? 2.2 : 0;
+    gait += (Math.min(1, speed / 40) * 8 + strollRate) * dt;
+
+    // ---- blink timer ----
+    blinkT -= dt;
+    if(blinkT <= 0){ blink = 1; blinkT = 4 + Math.random() * 2; }
+    blink = Math.max(0, blink - dt * 7);          // ~140ms closure
+    const blinkAmt = Math.sin(Math.min(1, blink) * Math.PI);
+
+    // ---- trail history ----
+    trail.push({ x: px });
+    if(trail.length > 10) trail.shift();
+    const trailStrength = Math.min(1, speed / 30) * moving;
+
+    // ---- assemble the live pose ----
+    const breath = Math.sin(t * 1.4) * 1.4 * (1 - sleep * 0.4);      // 2-3px breathing
+    const float  = (Math.sin(t * 0.9) * 1.2) * (1 - sit) * (1 - sleep); // gentle bob
+    const pose = {
+      breath: breath + (st.playing ? BEAT.v * 1.2 : 0),
+      float: float,
+      tailSway: Math.sin(t * 1.8) * 3 * (1 - sleep) + Math.sin(t*3.1)*0.6,
+      legPhase: Math.sin(gait * Math.PI) * moving,
+      earPerk: (st.playing ? BEAT.v : 0) * (1 - sleep),
+      eyeOpen: 1 - sleep,
+      blinkAmt: Math.max(blinkAmt, sleep),
+      asleep: sleep > 0.6,
+      sitAmt: Math.max(sit, sleep),
+      curl: sleep,
+      trailStrength: trailStrength
+    };
+
+    drawCat(drawX, groundY, s, pose);
   }
 
   addEventListener('resize', size);
   setTimeout(size, 60);
-  if(!reduce) raf = requestAnimationFrame(frame);
+  if(!reduce){ last = performance.now(); raf = requestAnimationFrame(frame); }
+  else { setTimeout(() => { size(); }, 80); }
 
   document.addEventListener('visibilitychange', function(){
     if(document.hidden){ cancelAnimationFrame(raf); raf = null; }
-    else if(!raf && !reduce) raf = requestAnimationFrame(frame);
+    else if(!raf && !reduce){ last = performance.now(); raf = requestAnimationFrame(frame); }
   });
 
   return { resize: size };
