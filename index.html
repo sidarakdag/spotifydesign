@@ -1173,17 +1173,18 @@ const SF = (function(){
 
 /* =========================================================================
    AURA — a glowing humanoid being floating in a cosmic void. Only runs in
-   the Aura skin. Layers: nebula fog, particle field + dust, aurora ribbons,
-   god rays, the luminous figure (breathing, floating, rotating), and beat-
-   driven shockwaves + light bursts. Driven by the faked beat pulse.
+   the Aura skin. The figure itself is the untouched uploaded image
+   (#aura-figure, drawn above this canvas) — nothing here ever draws on top
+   of her. This canvas only paints the space around her: a soft nebula bloom
+   in her own blue-white glow color, drifting light motes, faint aurora
+   ribbons, and beat-synced shockwave rings that pulse outward from her.
    ========================================================================= */
 const AU = (function(){
-  // Aura skin: the figure is a real image (#aura-figure) over pure black.
-  // Effects will be added here later. For now this just holds a black canvas
-  // so the layer exists and the skin looks clean.
   const cv = $('aura');
   const ctx = cv.getContext('2d');
-  let w = 0, h = 0, dpr = 1;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let w = 0, h = 0, dpr = 1, raf = null, last = performance.now(), t = 0;
+  let motes = [], rings = [], prevBeat = 0;
 
   function size(){
     dpr = Math.min(devicePixelRatio || 1, 2);
@@ -1191,15 +1192,121 @@ const AU = (function(){
     cv.width = w * dpr; cv.height = h * dpr;
     cv.style.width = w + 'px'; cv.style.height = h + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    paint();
+    seed();
+    draw(0);
   }
-  function paint(){
+
+  function seed(){
+    const n = reduce ? 0 : Math.round((w * h) / 11000);
+    motes = Array.from({length:n}, () => ({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      r: Math.random() * 1.5 + .3,
+      vy: -(Math.random() * 12 + 5),
+      ph: Math.random() * Math.PI * 2,
+      a: Math.random() * .45 + .15
+    }));
+  }
+
+  /* center on the figure — matches #aura-figure's fixed position (50%, 44%) */
+  function focus(){ return { cx: w * 0.5, cy: h * 0.44 }; }
+
+  function draw(dt){
+    const { cx, cy } = focus();
+    const beat = st.playing ? BEAT.v : 0;
+
+    ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, w, h);
+
+    // nebula bloom — her own blue-white glow, breathing softly with the beat
+    const reach = Math.max(w, h) * (0.6 + beat * 0.05);
+    const bloom = ctx.createRadialGradient(cx, cy, 0, cx, cy, reach);
+    bloom.addColorStop(0,   'rgba(150,180,255,' + (0.30 + beat * 0.12).toFixed(3) + ')');
+    bloom.addColorStop(.30, 'rgba(90,120,220,.15)');
+    bloom.addColorStop(.6,  'rgba(20,30,70,.10)');
+    bloom.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.fillStyle = bloom;
+    ctx.fillRect(0, 0, w, h);
+
+    // faint aurora ribbons drifting behind her
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for(let i = 0; i < 3; i++){
+      const yy = h * 0.18 + i * h * 0.16 + Math.sin(t * 0.12 + i * 2) * 16;
+      const rib = ctx.createLinearGradient(0, yy - 40, w, yy + 40);
+      rib.addColorStop(0,  'rgba(110,140,255,0)');
+      rib.addColorStop(.5, 'rgba(130,160,255,' + (0.05 + i * 0.012).toFixed(3) + ')');
+      rib.addColorStop(1,  'rgba(110,140,255,0)');
+      ctx.fillStyle = rib;
+      ctx.fillRect(0, yy - 40, w, 80);
+    }
+    ctx.restore();
+
+    // drifting light motes / cosmic dust, same palette as her aura
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for(const m of motes){
+      m.y += m.vy * dt;
+      m.x += Math.sin(t * 0.4 + m.ph) * 5 * dt;
+      if(m.y < -8){ m.y = h + 8; m.x = Math.random() * w; }
+      if(m.x < -8) m.x = w + 8;
+      if(m.x > w + 8) m.x = -8;
+      const tw = 0.55 + 0.45 * Math.sin(t * 2 + m.ph);
+      const a = m.a * tw * (0.7 + beat * 0.5);
+      ctx.fillStyle = 'rgba(205,222,255,' + a.toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.arc(m.x, m.y, m.r, 0, 6.2832);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // shockwave rings rippling outward from her on each beat
+    if(st.playing){
+      const rising = beat > 0.8 && prevBeat <= 0.8;
+      if(rising) rings.push({ r: 24, a: 0.45 });
+    }
+    prevBeat = beat;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for(let i = rings.length - 1; i >= 0; i--){
+      const ring = rings[i];
+      ring.r += dt * 150;
+      ring.a -= dt * 0.55;
+      if(ring.a <= 0){ rings.splice(i, 1); continue; }
+      ctx.strokeStyle = 'rgba(170,195,255,' + ring.a.toFixed(3) + ')';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, ring.r * 0.55, ring.r, 0, 0, 6.2832);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // soft vignette, echoing the photo's own dark falloff
+    const vg = ctx.createRadialGradient(cx, h * 0.5, Math.min(w, h) * 0.22, cx, h * 0.5, Math.max(w, h) * 0.75);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(1, 'rgba(0,0,0,.6)');
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  function frame(now){
+    raf = requestAnimationFrame(frame);
+    if(document.body.dataset.skin !== 'aura') return;
+    let dt = (now - last) / 1000; last = now;
+    if(dt > 0.05) dt = 0.05;
+    t += dt;
+    draw(dt);
   }
 
   addEventListener('resize', size);
   setTimeout(size, 60);
+  if(!reduce) raf = requestAnimationFrame(frame);
+
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden){ cancelAnimationFrame(raf); raf = null; }
+    else if(!raf && !reduce){ last = performance.now(); raf = requestAnimationFrame(frame); }
+  });
 
   return { resize: size };
 })();
