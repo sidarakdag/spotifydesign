@@ -1163,12 +1163,29 @@ async function poll(){
   }
 }
 
+let emptyPolls = 0;
+
 async function pollInner(){
-  const res = await api('/me/player');
-  if(!res.ok || !res.data){ return; }        // no device / nothing yet — keep last view, keep polling
-  const d = res.data;
+  let res = await api('/me/player');
+  let d = (res.ok && res.data) ? res.data : null;
+
+  // /me/player returns 204/empty when no device is "active" (e.g. you started
+  // playback in the Spotify app, not through Connect). currently-playing still
+  // reports the track in that case, so fall back to it.
+  if(!d || !d.item){
+    const cp = await api('/me/player/currently-playing');
+    if(cp.ok && cp.data && cp.data.item) d = cp.data;
+  }
+
+  if(!d || !d.item){
+    // genuinely nothing to read — after a few empty ticks, try waking the phone
+    emptyPolls++;
+    if(emptyPolls === 3) ensureDevice();
+    return;
+  }
+  emptyPolls = 0;
+
   const it = d.item;
-  if(!it){ return; }                          // between tracks / ad — wait for the next tick
 
   st.playing = d.is_playing;
   st.dur = it.duration_ms || 0;
