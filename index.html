@@ -558,7 +558,8 @@
     position:fixed;left:50%;top:44%;transform:translate(-50%,-50%);
     height:62vh;width:auto;max-width:92vw;object-fit:contain;
     z-index:1;pointer-events:none;display:none;
-    filter:drop-shadow(0 0 40px rgba(150,180,255,.4));
+    /* lit from the warp core behind her */
+    filter:drop-shadow(0 0 26px rgba(200,215,255,.65)) drop-shadow(0 0 70px rgba(150,120,255,.35));
   }
   body[data-skin="aura"] #aura-figure{display:block;}
   body[data-skin="aura"] #field,
@@ -1172,131 +1173,245 @@ const SF = (function(){
 })();
 
 /* =========================================================================
-   AURA — a glowing humanoid being floating in a cosmic void. Only runs in
-   the Aura skin. The figure itself is the untouched uploaded image
-   (#aura-figure, drawn above this canvas) — nothing here ever draws on top
-   of her. This canvas only paints the space around her: a soft nebula bloom
-   in her own blue-white glow color, drifting light motes, faint aurora
-   ribbons, and beat-synced shockwave rings that pulse outward from her.
+   AURA — WARP. The figure (#aura-figure) floats at the still center of a
+   hyperspace jump: rainbow light streaks tearing radially outward from a
+   brilliant core right behind her, a prismatic halo, and big diffraction
+   stars twinkling in the deep. Beat-reactive (surges on each beat).
+
+   Built for a locked 60fps: streaks are single line segments, colors come
+   from a precomputed palette (no per-frame string building in the hot loop),
+   the rainbow halo is pre-rendered once to an offscreen sprite, and an
+   adaptive governor trims the star count on weaker devices so the frame
+   budget is never blown.
    ========================================================================= */
 const AU = (function(){
   const cv = $('aura');
-  const ctx = cv.getContext('2d');
+  const ctx = cv.getContext('2d', { alpha:true });
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let w = 0, h = 0, dpr = 1, raf = null, last = performance.now(), t = 0;
-  let motes = [], rings = [], prevBeat = 0;
+
+  let w = 0, h = 0, dpr = 1, rscale = 1, raf = null, last = performance.now(), t = 0;
+  let stars = [], sparks = [], baseCount = 0, activeCount = 0;
+
+  // adaptive governor — two levers keep every frame inside the 60fps budget:
+  // first trim how many stars are drawn (no reallocation — just a smaller
+  // active slice of a pre-sorted array), then, only if still starved, drop the
+  // internal render resolution. Restores both when there's headroom.
+  const TARGET = 16.7;          // ms per frame
+  let quality = 1;             // 1 .. 0.25  — fraction of stars drawn
+  let frameEMA = 16;          // smoothed frame time
+  let govT = 0;              // seconds since last adjust
+
+  // precomputed rainbow palette — streaks are drawn batched per colour, so
+  // strokeStyle is set at most HUES times per frame, never per-star.
+  const HUES = 48;
+  const pal = new Array(HUES);
+  for(let i = 0; i < HUES; i++) pal[i] = 'hsl(' + Math.round(i / HUES * 360) + ' 95% 68%)';
+
+  // offscreen sprites, rendered once and blitted every frame (cheap fill-rate)
+  const halo = document.createElement('canvas');   let haloR = 0;
+  const core = document.createElement('canvas');   let coreS = 0;
+  const spark = document.createElement('canvas');  let sparkS = 0;
+
+  function focus(){ return { cx: w * 0.5, cy: h * 0.44 }; }
 
   function size(){
-    dpr = Math.min(devicePixelRatio || 1, 2);
+    dpr = Math.min(devicePixelRatio || 1, 1.5);         // cap fill-rate for the heavy scene
     w = innerWidth; h = innerHeight;
-    cv.width = w * dpr; cv.height = h * dpr;
-    cv.style.width = w + 'px'; cv.style.height = h + 'px';
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    applyBacking();
+    buildSprites();
     seed();
-    draw(0);
+  }
+  const MAXPX = 1400000;                                 // backing-store pixel ceiling
+  let effScale = 1;                                      // actual device-px per css-px in use
+  function applyBacking(){
+    let eff = dpr * rscale;
+    if(w * h * eff * eff > MAXPX) eff = Math.sqrt(MAXPX / (w * h));   // cap fill-rate on big screens
+    effScale = eff;
+    cv.width  = Math.max(2, Math.round(w * eff));
+    cv.height = Math.max(2, Math.round(h * eff));
+    cv.style.width = w + 'px'; cv.style.height = h + 'px';
+    ctx.setTransform(eff, 0, 0, eff, 0, 0);
+  }
+
+  /* a warp star: fixed radial direction (dx,dy), depth z shrinking toward 0.
+     hue is fixed at birth and preserved on respawn so the array stays sorted
+     by colour bucket — that's what lets the draw loop batch by strokeStyle. */
+  /* in-place (re)init — reusing the object avoids per-frame garbage / GC hitches */
+  function initStar(s, fresh, hi){
+    let dx = Math.random() * 2 - 1, dy = Math.random() * 2 - 1;
+    let m = Math.hypot(dx, dy);
+    if(m < 0.05){ dx = 0.05; dy = 0; m = 0.05; }
+    s.dx = dx / m; s.dy = dy / m;
+    s.spread = 0.12 + Math.random() * 0.9;
+    s.z = fresh ? Math.random() : 1;
+    s.spd = 0.22 + Math.random() * 0.5;
+    s.hi = hi;
+    return s;
+  }
+  function mkStar(fresh, hi){ return initStar({}, fresh, hi); }
+
+  function mkSpark(){
+    return {
+      x: Math.random() * w, y: Math.random() * h,
+      scale: 0.5 + Math.random() * 1.1,
+      ph: Math.random() * Math.PI * 2,
+      sp: 0.6 + Math.random() * 1.4
+    };
   }
 
   function seed(){
-    const n = reduce ? 0 : Math.round((w * h) / 11000);
-    motes = Array.from({length:n}, () => ({
-      x: Math.random() * w,
-      y: Math.random() * h,
-      r: Math.random() * 1.5 + .3,
-      vy: -(Math.random() * 12 + 5),
-      ph: Math.random() * Math.PI * 2,
-      a: Math.random() * .45 + .15
-    }));
+    baseCount = reduce ? 0 : Math.round(Math.min(w, h) * 1.0);
+    stars = new Array(baseCount);
+    for(let i = 0; i < baseCount; i++) stars[i] = mkStar(true, (i / baseCount * HUES) | 0);  // pre-sorted by hue
+    activeCount = Math.round(baseCount * quality);      // draw a prefix (still hue-sorted)
+    sparks = reduce ? [] : Array.from({length: 6}, mkSpark);
   }
 
-  /* center on the figure — matches #aura-figure's fixed position (50%, 44%) */
-  function focus(){ return { cx: w * 0.5, cy: h * 0.44 }; }
+  /* ---- sprites, built once per resize ---- */
+  function buildSprites(){
+    buildHalo(); buildCore(); buildSpark();
+  }
+  function buildHalo(){
+    haloR = Math.hypot(w, h) * 0.5;
+    const d = Math.ceil(haloR * 2 * dpr);
+    halo.width = halo.height = Math.max(2, d);
+    const hc = halo.getContext('2d'), c = d / 2;
+    hc.clearRect(0, 0, d, d);
+    let cg; try{ cg = hc.createConicGradient(0, c, c); }catch(e){ cg = null; }
+    if(cg){
+      for(let i = 0; i <= 12; i++) cg.addColorStop(i / 12, 'hsl(' + (i / 12 * 360) + ' 90% 62%)');
+      hc.fillStyle = cg;
+    }else hc.fillStyle = '#6a5acd';
+    hc.fillRect(0, 0, d, d);
+    const rg = hc.createRadialGradient(c, c, 0, c, c, c);  // fade to an annulus
+    rg.addColorStop(0.00, 'rgba(0,0,0,1)');
+    rg.addColorStop(0.28, 'rgba(0,0,0,0)');
+    rg.addColorStop(0.52, 'rgba(0,0,0,0)');
+    rg.addColorStop(1.00, 'rgba(0,0,0,1)');
+    hc.globalCompositeOperation = 'destination-out';
+    hc.fillStyle = rg; hc.fillRect(0, 0, d, d);
+    hc.globalCompositeOperation = 'source-over';
+  }
+  function buildCore(){
+    coreS = Math.max(2, Math.round(Math.min(w, h) * 0.5 * dpr));
+    core.width = core.height = coreS;
+    const cc = core.getContext('2d'), c = coreS / 2;
+    const g = cc.createRadialGradient(c, c, 0, c, c, c);
+    g.addColorStop(0,    'rgba(255,255,255,1)');
+    g.addColorStop(0.16, 'rgba(230,232,255,0.75)');
+    g.addColorStop(0.42, 'rgba(160,140,255,0.28)');
+    g.addColorStop(0.7,  'rgba(90,70,210,0.10)');
+    g.addColorStop(1,    'rgba(40,30,120,0)');
+    cc.fillStyle = g; cc.fillRect(0, 0, coreS, coreS);
+  }
+  function buildSpark(){
+    sparkS = Math.max(8, Math.round(48 * dpr));
+    spark.width = spark.height = sparkS;
+    const sc = spark.getContext('2d'), c = sparkS / 2, len = c * 0.94;
+    sc.clearRect(0, 0, sparkS, sparkS);
+    sc.lineCap = 'round';
+    for(let k = 0; k < 4; k++){
+      const a = k * Math.PI / 2, ex = c + Math.cos(a) * len, ey = c + Math.sin(a) * len;
+      const lg = sc.createLinearGradient(c, c, ex, ey);
+      lg.addColorStop(0, 'rgba(255,255,255,0.95)');
+      lg.addColorStop(1, 'rgba(200,215,255,0)');
+      sc.strokeStyle = lg; sc.lineWidth = Math.max(1, dpr);
+      sc.beginPath(); sc.moveTo(c, c); sc.lineTo(ex, ey); sc.stroke();
+    }
+    const cg = sc.createRadialGradient(c, c, 0, c, c, c * 0.28);
+    cg.addColorStop(0, 'rgba(255,255,255,1)');
+    cg.addColorStop(1, 'rgba(255,255,255,0)');
+    sc.fillStyle = cg; sc.beginPath(); sc.arc(c, c, c * 0.28, 0, 6.2832); sc.fill();
+  }
 
   function draw(dt){
     const { cx, cy } = focus();
     const beat = st.playing ? BEAT.v : 0;
+    const surge = 1 + beat * 1.4;
+    const K = Math.hypot(w, h) * 0.05;
+    const trail = 3.2;
+    const off = haloR + 4;
 
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, w, h);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, w, h);                           // deep black (body) shows through
 
-    // nebula bloom — her own blue-white glow, breathing softly with the beat
-    const reach = Math.max(w, h) * (0.6 + beat * 0.05);
-    const bloom = ctx.createRadialGradient(cx, cy, 0, cx, cy, reach);
-    bloom.addColorStop(0,   'rgba(150,180,255,' + (0.30 + beat * 0.12).toFixed(3) + ')');
-    bloom.addColorStop(.30, 'rgba(90,120,220,.15)');
-    bloom.addColorStop(.6,  'rgba(20,30,70,.10)');
-    bloom.addColorStop(1,   'rgba(0,0,0,0)');
-    ctx.fillStyle = bloom;
-    ctx.fillRect(0, 0, w, h);
-
-    // faint aurora ribbons drifting behind her
-    ctx.save();
+    // prismatic halo ring (from the references), pulsing with the beat.
+    // kept compact around her so corners fall to deep black (ref look) and the
+    // full-screen additive fill stays cheap.
     ctx.globalCompositeOperation = 'lighter';
-    for(let i = 0; i < 3; i++){
-      const yy = h * 0.18 + i * h * 0.16 + Math.sin(t * 0.12 + i * 2) * 16;
-      const rib = ctx.createLinearGradient(0, yy - 40, w, yy + 40);
-      rib.addColorStop(0,  'rgba(110,140,255,0)');
-      rib.addColorStop(.5, 'rgba(130,160,255,' + (0.05 + i * 0.012).toFixed(3) + ')');
-      rib.addColorStop(1,  'rgba(110,140,255,0)');
-      ctx.fillStyle = rib;
-      ctx.fillRect(0, yy - 40, w, 80);
-    }
-    ctx.restore();
+    ctx.globalAlpha = 0.18 + beat * 0.2;
+    const hs = haloR * (1.35 + beat * 0.2);
+    ctx.drawImage(halo, cx - hs / 2, cy - hs / 2, hs, hs);
 
-    // drifting light motes / cosmic dust, same palette as her aura
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    for(const m of motes){
-      m.y += m.vy * dt;
-      m.x += Math.sin(t * 0.4 + m.ph) * 5 * dt;
-      if(m.y < -8){ m.y = h + 8; m.x = Math.random() * w; }
-      if(m.x < -8) m.x = w + 8;
-      if(m.x > w + 8) m.x = -8;
-      const tw = 0.55 + 0.45 * Math.sin(t * 2 + m.ph);
-      const a = m.a * tw * (0.7 + beat * 0.5);
-      ctx.fillStyle = 'rgba(205,222,255,' + a.toFixed(3) + ')';
-      ctx.beginPath();
-      ctx.arc(m.x, m.y, m.r, 0, 6.2832);
-      ctx.fill();
+    // warp streaks — batched: one strokeStyle + one stroke per colour bucket
+    ctx.globalAlpha = 0.9;
+    ctx.lineWidth = Math.max(1, 1.5 * (0.7 + rscale * 0.3));
+    ctx.lineCap = 'round';
+    let bucket = -1;
+    for(let i = 0; i < activeCount; i++){
+      const s = stars[i];
+      s.z -= s.spd * surge * dt;
+      if(s.z <= 0.02){ initStar(s, false, s.hi); continue; }
+      const r  = (s.spread / s.z) * K;
+      const pz = s.z + s.spd * surge * dt * trail;
+      const pr = (s.spread / pz) * K;
+      const x2 = cx + s.dx * r, y2 = cy + s.dy * r;
+      if(Math.abs(x2 - cx) > off && Math.abs(y2 - cy) > off){ initStar(s, false, s.hi); continue; }
+      if(s.hi !== bucket){
+        if(bucket !== -1) ctx.stroke();
+        bucket = s.hi;
+        ctx.strokeStyle = pal[bucket];
+        ctx.beginPath();
+      }
+      ctx.moveTo(cx + s.dx * pr, cy + s.dy * pr);
+      ctx.lineTo(x2, y2);
     }
-    ctx.restore();
+    if(bucket !== -1) ctx.stroke();
 
-    // shockwave rings rippling outward from her on each beat
-    if(st.playing){
-      const rising = beat > 0.8 && prevBeat <= 0.8;
-      if(rising) rings.push({ r: 24, a: 0.45 });
-    }
-    prevBeat = beat;
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    for(let i = rings.length - 1; i >= 0; i--){
-      const ring = rings[i];
-      ring.r += dt * 150;
-      ring.a -= dt * 0.55;
-      if(ring.a <= 0){ rings.splice(i, 1); continue; }
-      ctx.strokeStyle = 'rgba(170,195,255,' + ring.a.toFixed(3) + ')';
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, ring.r * 0.55, ring.r, 0, 0, 6.2832);
-      ctx.stroke();
-    }
-    ctx.restore();
+    // the brilliant core right behind her (sprite blit, beat-scaled)
+    ctx.globalAlpha = 0.9 + beat * 0.1;
+    const cs = Math.min(w, h) * (0.5 + beat * 0.14);
+    ctx.drawImage(core, cx - cs / 2, cy - cs / 2, cs, cs);
 
-    // soft vignette, echoing the photo's own dark falloff
-    const vg = ctx.createRadialGradient(cx, h * 0.5, Math.min(w, h) * 0.22, cx, h * 0.5, Math.max(w, h) * 0.75);
-    vg.addColorStop(0, 'rgba(0,0,0,0)');
-    vg.addColorStop(1, 'rgba(0,0,0,.6)');
-    ctx.fillStyle = vg;
-    ctx.fillRect(0, 0, w, h);
+    // big diffraction stars twinkling in the deep (sprite blits)
+    for(let i = 0; i < sparks.length; i++){
+      const sp = sparks[i];
+      const tw = 0.5 + 0.5 * Math.sin(t * sp.sp + sp.ph);
+      const a = (0.25 + tw * 0.7) * (0.7 + beat * 0.3);
+      const sz = sparkS / dpr * sp.scale * (0.7 + tw * 0.5) * (1 + beat * 0.3);
+      ctx.globalAlpha = a;
+      ctx.drawImage(spark, sp.x - sz / 2, sp.y - sz / 2, sz, sz);
+    }
+
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  /* trim star count first; if pinned at the floor and still slow, drop the
+     internal render resolution. Restore both when there's headroom. */
+  function govern(dtMs){
+    frameEMA += (dtMs - frameEMA) * 0.1;
+    govT += dtMs / 1000;
+    if(govT < 0.4) return;
+    govT = 0;
+    if(frameEMA > TARGET * 1.2){
+      if(quality > 0.2){ quality = Math.max(0.2, quality - 0.12); activeCount = Math.round(baseCount * quality); }
+      else if(rscale > 0.4){ rscale = Math.max(0.4, rscale - 0.15); applyBacking(); buildSprites(); }
+    }else if(frameEMA < TARGET * 0.85){
+      if(rscale < 1){ rscale = Math.min(1, rscale + 0.1); applyBacking(); buildSprites(); }
+      else if(quality < 1){ quality = Math.min(1, quality + 0.1); activeCount = Math.round(baseCount * quality); }
+    }
   }
 
   function frame(now){
     raf = requestAnimationFrame(frame);
-    if(document.body.dataset.skin !== 'aura') return;
-    let dt = (now - last) / 1000; last = now;
+    const dtMs = now - last; last = now;
+    if(document.body.dataset.skin !== 'aura'){ return; }
+    let dt = dtMs / 1000;
     if(dt > 0.05) dt = 0.05;
     t += dt;
     draw(dt);
+    govern(dtMs);
   }
 
   addEventListener('resize', size);
@@ -1308,7 +1423,7 @@ const AU = (function(){
     else if(!raf && !reduce){ last = performance.now(); raf = requestAnimationFrame(frame); }
   });
 
-  return { resize: size };
+  return { resize: size, stats: () => ({ quality: +quality.toFixed(2), rscale: +rscale.toFixed(2), frameEMA: Math.round(frameEMA), active: activeCount, base: baseCount }) };
 })();
 
 /* =========================================================================
