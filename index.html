@@ -1183,24 +1183,13 @@ function dbg(msg){
 async function pollInner(){
   let res = await api('/me/player');
   let d = (res.ok && res.data) ? res.data : null;
-  let via = 'player';
 
-  // /me/player returns 204/empty when no device is "active" (e.g. you started
-  // playback in the Spotify app, not through Connect). currently-playing still
-  // reports the track in that case, so fall back to it.
   if(!d || !d.item){
     const cp = await api('/me/player/currently-playing');
-    if(cp.ok && cp.data && cp.data.item){ d = cp.data; via = 'current'; }
-    dbg('player: ' + res.status + (res.msg ? ' ' + res.msg : '') +
-        '\ncurrent: ' + cp.status + (cp.msg ? ' ' + cp.msg : '') +
-        '\nitem: ' + (d && d.item ? (d.item.name || '?') + ' [' + (d.currently_playing_type||'?') + ']' : 'none'));
-  } else {
-    dbg('player: ' + res.status + ' · ' + (d.item.name || '?') +
-        ' [' + (d.currently_playing_type||'?') + '] playing=' + d.is_playing);
+    if(cp.ok && cp.data && cp.data.item){ d = cp.data; }
   }
 
   if(!d || !d.item){
-    // genuinely nothing to read — after a few empty ticks, try waking the phone
     emptyPolls++;
     if(emptyPolls === 3) ensureDevice();
     return;
@@ -1208,49 +1197,57 @@ async function pollInner(){
   emptyPolls = 0;
 
   const it = d.item;
+  if(!it || typeof it !== 'object'){ return; }
 
-  st.playing = d.is_playing;
-  st.dur = it.duration_ms || 0;
-  if(!st.seeking) st.pos = d.progress_ms || 0;
-  st.shuffle = !!d.shuffle_state;
-  st.repeat  = d.repeat_state || 'off';
-
-  if(d.device && typeof d.device.volume_percent === 'number' && !volDrag){
-    st.vol = d.device.volume_percent;
-    $('vol-fill').style.width = st.vol + '%'; $('vol').style.setProperty('--volpos', st.vol + '%');
-    $('vol').setAttribute('aria-valuenow', st.vol);
-  }
-
-  setPlayIcon(st.playing);
-  $('btn-shuffle').classList.toggle('on', st.shuffle);
-  $('btn-repeat').classList.toggle('on', st.repeat !== 'off');
-  $('repeat-dot').style.display = st.repeat === 'track' ? 'block' : 'none';
-
-  // always reflect the current track text — cheap, and immune to a stale st.id
-  const artists = (it.artists || []).map(a => a.name).join(', ');
+  // ---- WRITE THE DISPLAY FIRST, before anything that could throw ----
+  const artists = Array.isArray(it.artists) ? it.artists.map(a => a && a.name).filter(Boolean).join(', ') : '';
   const albumName = (it.album && it.album.name) || '';
-  $('title').textContent  = it.name || '—';
-  $('artist').textContent = artists || '';
-  $('ab-title').textContent  = it.name || '—';
-  $('ab-artist').textContent = artists || '';
-  $('ab-album').textContent  = albumName;
+  const titleEl = document.getElementById('title');
+  const artistEl = document.getElementById('artist');
+  if(titleEl) titleEl.textContent = it.name || '—';
+  if(artistEl) artistEl.textContent = artists;
+  const abt = document.getElementById('ab-title'); if(abt) abt.textContent = it.name || '—';
+  const aba = document.getElementById('ab-artist'); if(aba) aba.textContent = artists;
+  const abl = document.getElementById('ab-album'); if(abl) abl.textContent = albumName;
 
-  if(it.id !== st.id){
-    const first = st.id === null;
-    st.id = it.id;
-    const url = it.album && it.album.images && it.album.images[0] && it.album.images[0].url;
-    if(url){
-      const img = $('art');
-      img.onload = function(){ extract(img); };
-      img.src = url;
-      const bg = $('artbg');
-      bg.style.backgroundImage = 'url("' + url + '")';
-      bg.classList.add('on');
-    }
-    document.title = it.name + ' — Nocturne';
-    if(!first){ swapAnim(); buzz(12); }
-    capture(it);        // anything that plays is yours forever
+  // album art — update whenever the url differs from what's shown
+  const url = it.album && it.album.images && it.album.images[0] && it.album.images[0].url;
+  const imgEl = document.getElementById('art');
+  if(url && imgEl && imgEl.getAttribute('data-src') !== url){
+    imgEl.setAttribute('data-src', url);
+    imgEl.onload = function(){ try{ extract(imgEl); }catch(e){} };
+    imgEl.src = url;
+    const bg = document.getElementById('artbg');
+    if(bg){ bg.style.backgroundImage = 'url("' + url + '")'; bg.classList.add('on'); }
+    document.title = (it.name || 'Nocturne') + ' — Nocturne';
   }
+
+  // ---- now the state that drives buttons/cat; wrapped so it can't block the display ----
+  try{
+    st.playing = !!d.is_playing;
+    st.dur = it.duration_ms || 0;
+    if(!st.seeking) st.pos = d.progress_ms || 0;
+    st.shuffle = !!d.shuffle_state;
+    st.repeat  = d.repeat_state || 'off';
+
+    if(d.device && typeof d.device.volume_percent === 'number' && !volDrag){
+      st.vol = d.device.volume_percent;
+      $('vol-fill').style.width = st.vol + '%'; $('vol').style.setProperty('--volpos', st.vol + '%');
+      $('vol').setAttribute('aria-valuenow', st.vol);
+    }
+
+    setPlayIcon(st.playing);
+    $('btn-shuffle').classList.toggle('on', st.shuffle);
+    $('btn-repeat').classList.toggle('on', st.repeat !== 'off');
+    $('repeat-dot').style.display = st.repeat === 'track' ? 'block' : 'none';
+
+    if(it.id !== st.id){
+      const first = st.id === null;
+      st.id = it.id;
+      if(!first){ swapAnim(); buzz(12); }
+      capture(it);
+    }
+  }catch(e){ /* display already updated above; ignore control-path hiccups */ }
 }
 
 /* =========================================================================
@@ -2211,6 +2208,16 @@ function showGate(mode, err){
 function enterApp(){
   $('gate').classList.add('hide');
   $('app').setAttribute('aria-hidden','false');
+
+  // brief version stamp so we can confirm the latest file actually loaded
+  (function(){
+    const v = document.createElement('div');
+    v.textContent = 'build v7';
+    v.style.cssText = 'position:fixed;right:8px;top:calc(var(--safe-t) + 4px);z-index:99;'+
+      'font:9px monospace;color:#4C7BFF;opacity:.7;pointer-events:none;';
+    document.body.appendChild(v);
+    setTimeout(() => v.remove(), 6000);
+  })();
 
   applyLook();
   setTimeout(() => D.resize(), 50);   // canvas has no width until the app is shown
