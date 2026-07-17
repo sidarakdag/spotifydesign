@@ -790,6 +790,10 @@
     box-shadow:inset -1px -1px #000, inset 1px 1px #dfdfdf, inset -2px -2px #808080, inset 2px 2px #fff, 4px 4px 0 rgba(0,0,0,.35);
   }
   .rwin.min{display:none;}
+  /* window opening animation — zooms + fades from centre (scale composes with
+     the window's translate/left-top positioning, dragged or not) */
+  .rwin.opening{animation:winOpen .18s cubic-bezier(.2,.85,.3,1);}
+  @keyframes winOpen{from{opacity:.2;scale:.8;}to{opacity:1;scale:1;}}
   .rwin-titlebar{
     display:flex;align-items:center;gap:5px;height:20px;padding:0 2px 0 4px;
     background:linear-gradient(90deg,#000082,#1a86d4);color:#fff;
@@ -867,7 +871,8 @@
     background:#c0c0c0;padding:3px;width:210px;
     box-shadow:inset -1px -1px #000, inset 1px 1px #dfdfdf, inset -2px -2px #808080, inset 2px 2px #fff, 3px 3px 0 rgba(0,0,0,.35);
   }
-  .rstart.open{display:flex;}
+  .rstart.open{display:flex;animation:startOpen .13s ease-out;transform-origin:left bottom;}
+  @keyframes startOpen{from{opacity:.3;transform:translateY(10px) scale(.94);}to{opacity:1;transform:none;}}
   .rstart-side{
     width:22px;flex:0 0 auto;writing-mode:vertical-rl;transform:rotate(180deg);
     text-align:center;font-weight:bold;font-size:15px;color:#fff;padding:8px 3px;
@@ -1054,15 +1059,9 @@
     <a class="rd-icon" href="https://www.google.com" target="_blank" rel="noopener">
       <svg class="ico" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="#2f7fd6" stroke="#0a2a52" stroke-width="1.5"/><path d="M3 16h26M16 3v26" stroke="#bfe0ff" stroke-width="1" fill="none"/><ellipse cx="16" cy="16" rx="6.5" ry="13" fill="none" stroke="#bfe0ff" stroke-width="1"/><path d="M6 9c6 4 14 4 20 0M6 23c6-4 14-4 20 0" fill="none" stroke="#bfe0ff" stroke-width="1"/></svg>
       <span>Internet</span></a>
-    <a class="rd-icon" href="https://www.wikipedia.org" target="_blank" rel="noopener">
-      <svg class="ico" viewBox="0 0 32 32"><rect x="2" y="2" width="28" height="28" fill="#f2f2ea" stroke="#000"/><text x="16" y="23" font-size="18" text-anchor="middle" font-family="Georgia,serif" fill="#000">W</text></svg>
-      <span>Wikipedia</span></a>
-    <button class="rd-icon" id="rd-computer" type="button">
-      <svg class="ico" viewBox="0 0 32 32"><rect x="4" y="4" width="24" height="17" fill="#cdc6ac" stroke="#000"/><rect x="6" y="6" width="20" height="12" fill="#2f9a9a"/><rect x="7" y="7" width="8" height="4" fill="#7fd0d0" opacity=".6"/><rect x="10" y="23" width="12" height="3" fill="#cdc6ac" stroke="#000"/><rect x="6" y="26" width="20" height="3" fill="#9a927a" stroke="#000"/></svg>
-      <span>My Computer</span></button>
-    <button class="rd-icon" id="rd-aura" type="button">
-      <svg class="ico" viewBox="0 0 32 32"><defs><radialGradient id="auraIco"><stop offset="0" stop-color="#fff"/><stop offset=".55" stop-color="#8fb0ff"/><stop offset="1" stop-color="#173a8f"/></radialGradient></defs><circle cx="16" cy="16" r="13" fill="url(#auraIco)"/></svg>
-      <span>Aura.exe</span></button>
+    <button class="rd-icon" id="rd-player" type="button">
+      <svg class="ico" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="#d5d7e0" stroke="#7a7d88"/><circle cx="16" cy="16" r="13.5" fill="none" stroke="#b7bac6"/><path d="M16 2a14 14 0 0 1 12 7l-7 4a6 6 0 0 0-5-3z" fill="#5aa0ff" opacity=".55"/><path d="M30 16a14 14 0 0 1-7 12l-4-7a6 6 0 0 0 3-5z" fill="#b06bff" opacity=".5"/><circle cx="16" cy="16" r="4.6" fill="#2b8a8a" stroke="#5a6a6a"/><circle cx="16" cy="16" r="1.6" fill="#eef"/></svg>
+      <span>Media&nbsp;Player</span></button>
   </div>
 
   <div class="rwin" id="rwin">
@@ -3092,10 +3091,13 @@ document.querySelectorAll('.skin-card').forEach(card => {
   });
 
   // window + taskbar chrome — close/minimise just HIDE the window (you stay on
-  // the retro desktop); reopen from the taskbar button. Switching back to Aura
-  // is done from the Start menu or the Aura.exe icon, never by closing.
+  // the retro desktop); reopen from the taskbar button or the Media Player
+  // icon. Switching back to Aura is done from the Start menu, never by closing.
   const win = $('rwin'), taskBtn = $('tb-task');
-  function showWin(){ win.classList.remove('min'); taskBtn.classList.add('active'); }
+  function showWin(){
+    win.classList.remove('min'); taskBtn.classList.add('active');
+    win.classList.remove('opening'); void win.offsetWidth; win.classList.add('opening');   // replay open anim
+  }
   function hideWin(){ win.classList.add('min'); taskBtn.classList.remove('active'); }
   window.retroShowWin = showWin;
   $('rwin-close').onclick = hideWin;
@@ -3138,8 +3140,7 @@ document.querySelectorAll('.skin-card').forEach(card => {
   document.addEventListener('pointerdown', e => { if(start.classList.contains('open') && !start.contains(e.target) && e.target !== startBtn && !startBtn.contains(e.target)) closeStart(); });
   $('rs-aura').onclick = () => { closeStart(); setSkin('aura'); };
   $('rs-exit').onclick = () => { closeStart(); $('btn-logout').click(); };
-  $('rd-aura').onclick = () => setSkin('aura');
-  $('rd-computer').onclick = () => toast('My Computer — nothing to see here yet');
+  $('rd-player').onclick = showWin;      // Media Player icon opens the window
 
   // live clock
   function clock(){
