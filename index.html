@@ -736,6 +736,154 @@
     #btn-logout:hover,.sheet-close:hover{transform:translateY(-1px);}
   }
 
+  /* =========================================================================
+     RETRO 95 SKIN — a Windows-95 desktop: teal wallpaper, clickable shortcut
+     icons that open sites, a beveled media-player window, and a taskbar.
+     ========================================================================= */
+  #retro{
+    position:fixed;inset:0;z-index:6;display:none;overflow:hidden;
+    background:#0b8a8a;
+    font-family:'Tahoma','MS Sans Serif',Geneva,Verdana,sans-serif;
+    font-size:12px;color:#000;letter-spacing:0;
+    padding:calc(var(--safe-t) + 8px) 8px 8px;
+    -webkit-font-smoothing:none;user-select:none;-webkit-user-select:none;
+  }
+  body[data-skin="retro"] #retro{display:block;}
+  body[data-skin="retro"]{background:#0b8a8a;}
+  body[data-skin="retro"] #app,
+  body[data-skin="retro"] #aura,
+  body[data-skin="retro"] #figure-wrap,
+  body[data-skin="retro"] #field,
+  body[data-skin="retro"] #stars,
+  body[data-skin="retro"] #bloom,
+  body[data-skin="retro"] #grain,
+  body[data-skin="retro"] #cursor-glow{display:none !important;}
+
+  /* faint CRT scanlines over the whole desktop */
+  #retro::after{
+    content:"";position:absolute;inset:0;z-index:60;pointer-events:none;
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,.07) 0 1px, transparent 1px 3px);
+    opacity:.5;
+  }
+
+  /* ---- desktop shortcut icons ---- */
+  .rd-icons{
+    display:flex;flex-direction:column;flex-wrap:wrap;align-content:flex-start;
+    gap:4px 10px;height:calc(100% - 46px);max-height:560px;
+  }
+  .rd-icon{
+    width:74px;display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:5px 3px;background:none;border:1px dotted transparent;cursor:pointer;
+    text-decoration:none;text-align:center;font-family:inherit;
+  }
+  .rd-icon .ico{width:32px;height:32px;image-rendering:pixelated;filter:drop-shadow(1px 1px 0 rgba(0,0,0,.45));}
+  .rd-icon span{font-size:11px;color:#fff;text-shadow:1px 1px 0 #000, 0 0 2px #000;line-height:1.15;padding:0 2px;}
+  .rd-icon:hover{border-color:rgba(255,255,255,.35);}
+  .rd-icon:hover span{background:#000080;box-shadow:0 0 0 1px #000080;}
+  .rd-icon:active .ico{filter:drop-shadow(1px 1px 0 rgba(0,0,0,.45)) brightness(.8);}
+  .rd-icon:focus-visible{outline:1px dotted #fff;outline-offset:1px;}
+
+  /* ---- beveled window ---- */
+  .rwin{
+    position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);
+    width:min(348px, calc(100vw - 26px));background:#c0c0c0;padding:3px;
+    box-shadow:inset -1px -1px #000, inset 1px 1px #dfdfdf, inset -2px -2px #808080, inset 2px 2px #fff, 4px 4px 0 rgba(0,0,0,.35);
+  }
+  .rwin.min{display:none;}
+  .rwin-titlebar{
+    display:flex;align-items:center;gap:5px;height:20px;padding:0 2px 0 4px;
+    background:linear-gradient(90deg,#000082,#1a86d4);color:#fff;
+  }
+  .rwin-ticon{font-size:12px;}
+  .rwin-tname{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:bold;font-size:12px;}
+  .rwin-tbtns{display:flex;gap:2px;}
+  .rwin-b{
+    width:17px;height:15px;background:#c0c0c0;color:#000;cursor:pointer;
+    font:bold 10px/1 'Tahoma',sans-serif;display:grid;place-items:center;padding-bottom:1px;
+    box-shadow:inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+  }
+  .rwin-b:active{box-shadow:inset 1px 1px #000, inset -1px -1px #fff;}
+  .rwin-menu{display:flex;gap:15px;padding:3px 6px 2px;background:#c0c0c0;font-size:12px;}
+  .rwin-menu span{cursor:default;}
+  .rwin-menu u{text-decoration:underline;}
+  .rwin-body{display:flex;gap:9px;padding:9px;background:#c0c0c0;}
+  .rwin-art{
+    width:96px;height:96px;flex:0 0 auto;background:#000;overflow:hidden;
+    box-shadow:inset 1px 1px #808080, inset -1px -1px #fff, inset 2px 2px #000;
+  }
+  .rwin-art img{width:100%;height:100%;object-fit:cover;image-rendering:pixelated;display:block;filter:saturate(1.15) contrast(1.08);}
+  .rwin-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;}
+  .rwin-title{font-weight:bold;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .rwin-artist{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .rwin-seek{
+    height:15px;background:#fff;position:relative;cursor:pointer;margin-top:3px;
+    box-shadow:inset 1px 1px #808080, inset -1px -1px #fff, inset 2px 2px #000;
+  }
+  .rwin-seek-fill{position:absolute;left:2px;top:2px;bottom:2px;width:0;
+    background:repeating-linear-gradient(90deg,#000080 0 5px,#1a55c8 5px 6px);}
+  .rwin-times{display:flex;justify-content:space-between;font-size:10px;font-family:'JetBrains Mono',monospace;}
+  .rwin-transport{display:flex;gap:5px;margin-top:3px;}
+  .rbtn{
+    min-width:38px;height:26px;background:#c0c0c0;cursor:pointer;
+    font:bold 12px/1 'Tahoma',sans-serif;display:grid;place-items:center;
+    box-shadow:inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+  }
+  .rbtn:active{box-shadow:inset 1px 1px #000, inset -1px -1px #fff, inset 2px 2px #808080;padding:1px 0 0 1px;}
+  .rbtn-play{min-width:46px;}
+  .rwin-status{display:flex;gap:3px;margin-top:3px;}
+  .rwin-stat{flex:1;padding:2px 6px;font-size:11px;background:#c0c0c0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+    box-shadow:inset 1px 1px #808080, inset -1px -1px #fff;}
+  .rwin-stat2{flex:0 0 auto;}
+
+  /* ---- taskbar ---- */
+  .taskbar{
+    position:absolute;left:0;right:0;bottom:0;height:calc(30px + var(--safe-b));z-index:50;
+    display:flex;align-items:flex-start;gap:4px;padding:3px 4px calc(var(--safe-b)) 3px;
+    background:#c0c0c0;box-shadow:inset 0 1px #fff, inset 0 2px #dfdfdf;
+  }
+  .tb-start{
+    height:23px;padding:0 9px 0 6px;font-weight:bold;font-size:12px;cursor:pointer;
+    display:flex;align-items:center;gap:5px;background:#c0c0c0;
+    box-shadow:inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+  }
+  .tb-start.on{box-shadow:inset 1px 1px #000, inset -1px -1px #fff, inset 2px 2px #808080;}
+  .tb-logo{width:16px;height:14px;flex:0 0 auto;background:
+    linear-gradient(135deg,#ff3b3b 0 50%,#ffd23b 50% 100%),
+    linear-gradient(135deg,#3bd23b 0 50%,#3b8bff 50% 100%);
+    background-size:100% 50%;background-position:0 0,0 100%;background-repeat:no-repeat;
+    transform:skewX(-8deg);box-shadow:0 0 0 1px #808080;}
+  .tb-task{
+    flex:0 1 170px;height:23px;padding:0 8px;text-align:left;cursor:pointer;
+    display:flex;align-items:center;font-size:11px;overflow:hidden;background:#c0c0c0;
+    box-shadow:inset 1px 1px #808080, inset -1px -1px #fff;
+  }
+  .tb-task.active{box-shadow:inset 1px 1px #000, inset -1px -1px #dfdfdf;background:#bcbcbc;font-weight:bold;}
+  .tb-tray{margin-left:auto;align-self:center;padding:3px 9px;font-size:11px;
+    box-shadow:inset 1px 1px #808080, inset -1px -1px #fff;}
+
+  /* ---- start menu ---- */
+  .rstart{
+    position:absolute;left:4px;bottom:calc(30px + var(--safe-b));z-index:55;display:none;
+    background:#c0c0c0;padding:3px;width:210px;
+    box-shadow:inset -1px -1px #000, inset 1px 1px #dfdfdf, inset -2px -2px #808080, inset 2px 2px #fff, 3px 3px 0 rgba(0,0,0,.35);
+  }
+  .rstart.open{display:flex;}
+  .rstart-side{
+    width:22px;flex:0 0 auto;writing-mode:vertical-rl;transform:rotate(180deg);
+    text-align:center;font-weight:bold;font-size:15px;color:#fff;padding:8px 3px;
+    background:linear-gradient(#000082,#1a86d4);letter-spacing:.05em;
+  }
+  .rstart-items{flex:1;display:flex;flex-direction:column;padding:2px;}
+  .rstart-item{
+    display:flex;align-items:center;gap:9px;padding:6px 10px;font-size:12px;text-align:left;
+    background:none;cursor:pointer;text-decoration:none;color:#000;font-family:inherit;
+  }
+  .rstart-item:hover{background:#000082;color:#fff;}
+  .rstart-i{width:16px;text-align:center;}
+  .rstart-sep{height:2px;margin:3px 2px;box-shadow:inset 0 1px #808080, inset 0 -1px #fff;}
+
+  @media (prefers-reduced-motion: reduce){ #retro::after{display:none;} }
+
 </style>
 </head>
 <body class="paused" data-skin="aura">
@@ -772,6 +920,7 @@
       <button class="chip" id="btn-lists">Lists</button>
       <button class="chip" id="btn-queue">Queue</button>
       <button class="chip" id="btn-device">Output</button>
+      <button class="chip" id="btn-skin">Retro</button>
     </div>
   </header>
 
@@ -838,6 +987,75 @@
       </div>
     </div>
     <button class="chip" id="btn-logout">Exit</button>
+  </div>
+</div>
+
+<!-- ============ RETRO 95 SKIN ============ -->
+<div id="retro" aria-hidden="true">
+  <div class="rd-icons">
+    <a class="rd-icon" href="https://www.minecraft.net" target="_blank" rel="noopener">
+      <svg class="ico" viewBox="0 0 32 32"><rect width="32" height="32" fill="#7c5a3a"/><rect width="32" height="12" fill="#61b23a"/><rect y="10" width="32" height="3" fill="#3f8f22"/><rect x="3" y="3" width="4" height="4" fill="#83cf52"/><rect x="13" y="2" width="5" height="4" fill="#83cf52"/><rect x="24" y="4" width="4" height="3" fill="#83cf52"/><rect x="6" y="17" width="5" height="5" fill="#6b4a2c"/><rect x="19" y="20" width="5" height="5" fill="#6b4a2c"/><rect x="12" y="25" width="4" height="4" fill="#8a6640"/><rect x="24" y="15" width="4" height="4" fill="#8a6640"/></svg>
+      <span>Minecraft</span></a>
+    <a class="rd-icon" href="https://www.youtube.com" target="_blank" rel="noopener">
+      <svg class="ico" viewBox="0 0 32 32"><rect x="2" y="8" width="28" height="17" rx="4" fill="#cc0000"/><path d="M13 12.5l8 4-8 4z" fill="#fff"/></svg>
+      <span>YouTube</span></a>
+    <a class="rd-icon" href="https://www.google.com" target="_blank" rel="noopener">
+      <svg class="ico" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="#2f7fd6" stroke="#0a2a52" stroke-width="1.5"/><path d="M3 16h26M16 3v26" stroke="#bfe0ff" stroke-width="1" fill="none"/><ellipse cx="16" cy="16" rx="6.5" ry="13" fill="none" stroke="#bfe0ff" stroke-width="1"/><path d="M6 9c6 4 14 4 20 0M6 23c6-4 14-4 20 0" fill="none" stroke="#bfe0ff" stroke-width="1"/></svg>
+      <span>Internet</span></a>
+    <a class="rd-icon" href="https://www.wikipedia.org" target="_blank" rel="noopener">
+      <svg class="ico" viewBox="0 0 32 32"><rect x="2" y="2" width="28" height="28" fill="#f2f2ea" stroke="#000"/><text x="16" y="23" font-size="18" text-anchor="middle" font-family="Georgia,serif" fill="#000">W</text></svg>
+      <span>Wikipedia</span></a>
+    <button class="rd-icon" id="rd-computer" type="button">
+      <svg class="ico" viewBox="0 0 32 32"><rect x="4" y="4" width="24" height="17" fill="#cdc6ac" stroke="#000"/><rect x="6" y="6" width="20" height="12" fill="#2f9a9a"/><rect x="7" y="7" width="8" height="4" fill="#7fd0d0" opacity=".6"/><rect x="10" y="23" width="12" height="3" fill="#cdc6ac" stroke="#000"/><rect x="6" y="26" width="20" height="3" fill="#9a927a" stroke="#000"/></svg>
+      <span>My Computer</span></button>
+    <button class="rd-icon" id="rd-aura" type="button">
+      <svg class="ico" viewBox="0 0 32 32"><defs><radialGradient id="auraIco"><stop offset="0" stop-color="#fff"/><stop offset=".55" stop-color="#8fb0ff"/><stop offset="1" stop-color="#173a8f"/></radialGradient></defs><circle cx="16" cy="16" r="13" fill="url(#auraIco)"/></svg>
+      <span>Aura.exe</span></button>
+  </div>
+
+  <div class="rwin" id="rwin">
+    <div class="rwin-titlebar">
+      <span class="rwin-ticon">♪</span>
+      <span class="rwin-tname">Nocturne&nbsp;&mdash;&nbsp;<span id="rwin-track">Media&nbsp;Player</span></span>
+      <span class="rwin-tbtns">
+        <button class="rwin-b" id="rwin-min" type="button" aria-label="Minimize">_</button>
+        <button class="rwin-b" id="rwin-max" type="button" aria-label="Maximize">▢</button>
+        <button class="rwin-b" id="rwin-close" type="button" aria-label="Close">×</button>
+      </span>
+    </div>
+    <div class="rwin-menu"><span><u>F</u>ile</span><span><u>E</u>dit</span><span><u>V</u>iew</span><span><u>H</u>elp</span></div>
+    <div class="rwin-body">
+      <div class="rwin-art"><img id="rart" alt=""></div>
+      <div class="rwin-info">
+        <div class="rwin-title" id="rtitle">Nothing playing</div>
+        <div class="rwin-artist" id="rartist">Insert a disc &amp; press play</div>
+        <div class="rwin-seek" id="r-seek"><div class="rwin-seek-fill" id="r-fill"></div></div>
+        <div class="rwin-times"><span id="r-tnow">0:00</span><span id="r-tend">0:00</span></div>
+        <div class="rwin-transport">
+          <button class="rbtn" id="r-prev" type="button" title="Previous">◄◄</button>
+          <button class="rbtn rbtn-play" id="r-play" type="button" title="Play / Pause">►</button>
+          <button class="rbtn" id="r-next" type="button" title="Next">►►</button>
+        </div>
+      </div>
+    </div>
+    <div class="rwin-status"><span class="rwin-stat" id="r-status">Ready</span><span class="rwin-stat rwin-stat2">Nocturne&nbsp;95</span></div>
+  </div>
+
+  <div class="taskbar">
+    <button class="tb-start" id="tb-start" type="button"><span class="tb-logo"></span>Start</button>
+    <button class="tb-task" id="tb-task" type="button"><span class="rwin-ticon">♪</span>&nbsp;Nocturne</button>
+    <div class="tb-tray"><span class="tb-clock" id="r-clock">12:00</span></div>
+  </div>
+
+  <div class="rstart" id="rstart">
+    <div class="rstart-side">Nocturne&nbsp;95</div>
+    <div class="rstart-items">
+      <button class="rstart-item" id="rs-aura" type="button"><span class="rstart-i">✦</span> Switch to Aura</button>
+      <a class="rstart-item" href="https://www.minecraft.net" target="_blank" rel="noopener"><span class="rstart-i">▦</span> Minecraft</a>
+      <a class="rstart-item" href="https://open.spotify.com" target="_blank" rel="noopener"><span class="rstart-i">♫</span> Spotify.com</a>
+      <div class="rstart-sep"></div>
+      <button class="rstart-item" id="rs-exit" type="button"><span class="rstart-i">⏻</span> Log off Nocturne…</button>
+    </div>
   </div>
 </div>
 
@@ -1767,6 +1985,7 @@ function paint(){
   $('t-now').textContent = fmt(st.pos);
   $('t-end').textContent = fmt(st.dur);
   $('seek').setAttribute('aria-valuenow', Math.round(pct));
+  if(typeof retroSync === 'function') retroSync();
 }
 function tick(){
   if(st.playing && !st.seeking) st.pos = Math.min(st.pos + 250, st.dur);
@@ -2746,13 +2965,94 @@ function renderLists(){
 }
 
 /* =========================================================================
-   SKIN — the app runs the Aura skin exclusively (no skin switcher, no
-   background-photo setting). applyLook is kept as the single entry point
-   that pins the skin, so existing callers (boot) stay valid.
+   SKIN — two skins now: 'aura' (the warp) and 'retro' (the Windows-95
+   desktop). applyLook pins the stored skin; setSkin switches + persists.
    ========================================================================= */
+function getSkin(){ return localStorage.getItem('nc_skin') === 'retro' ? 'retro' : 'aura'; }
 function applyLook(){
-  document.body.dataset.skin = 'aura';
+  const s = getSkin();
+  document.body.dataset.skin = s;
+  $('btn-skin').textContent = s === 'retro' ? 'Aura' : 'Retro';
+  if(s === 'retro'){ retroSync(); }
+  else { setTimeout(() => { try{ AU.resize(); }catch(e){} }, 20); }
 }
+function setSkin(s){
+  localStorage.setItem('nc_skin', s);
+  applyLook();
+  buzz(8);
+}
+$('btn-skin').onclick = () => setSkin('retro');
+
+/* =========================================================================
+   RETRO 95 — wire the Win95 window to the same player, mirror state into it,
+   run the taskbar clock + Start menu. The retro buttons just forward to the
+   real controls so playback logic isn't duplicated.
+   ========================================================================= */
+(function RETRO(){
+  const fwd = (id, target) => { const el = $(id); if(el) el.onclick = () => $(target).click(); };
+  fwd('r-prev', 'btn-prev');
+  fwd('r-play', 'btn-play');
+  fwd('r-next', 'btn-next');
+
+  // click the retro seek bar to scrub
+  const rseek = $('r-seek');
+  if(rseek) rseek.addEventListener('pointerdown', async e => {
+    if(!st.dur) return;
+    const r = rseek.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+    const ms = Math.round(frac * st.dur);
+    st.pos = ms; st.seeking = true;
+    $('r-fill').style.width = (frac * 100) + '%';
+    await control('/me/player/seek?position_ms=' + ms, { method:'PUT' });
+    st.seeking = false;
+    setTimeout(poll, 300);
+  });
+
+  // window + taskbar chrome
+  $('rwin-close').onclick = () => setSkin('aura');       // "close" → back to Aura
+  const win = $('rwin'), taskBtn = $('tb-task');
+  function toggleMin(){ win.classList.toggle('min'); taskBtn.classList.toggle('active', !win.classList.contains('min')); }
+  $('rwin-min').onclick = toggleMin;
+  $('rwin-max').onclick = () => { win.classList.remove('min'); taskBtn.classList.add('active'); };
+  taskBtn.onclick = () => { if(win.classList.contains('min')){ win.classList.remove('min'); taskBtn.classList.add('active'); } else toggleMin(); };
+  taskBtn.classList.add('active');
+
+  // Start menu
+  const start = $('rstart'), startBtn = $('tb-start');
+  function closeStart(){ start.classList.remove('open'); startBtn.classList.remove('on'); }
+  startBtn.onclick = e => { e.stopPropagation(); start.classList.toggle('open'); startBtn.classList.toggle('on', start.classList.contains('open')); };
+  document.addEventListener('pointerdown', e => { if(start.classList.contains('open') && !start.contains(e.target) && e.target !== startBtn && !startBtn.contains(e.target)) closeStart(); });
+  $('rs-aura').onclick = () => { closeStart(); setSkin('aura'); };
+  $('rs-exit').onclick = () => { closeStart(); $('btn-logout').click(); };
+  $('rd-aura').onclick = () => setSkin('aura');
+  $('rd-computer').onclick = () => toast('My Computer — nothing to see here yet');
+
+  // live clock
+  function clock(){
+    const d = new Date();
+    let hh = d.getHours(), mm = String(d.getMinutes()).padStart(2, '0');
+    const ap = hh < 12 ? 'AM' : 'PM'; hh = hh % 12 || 12;
+    const el = $('r-clock'); if(el) el.textContent = hh + ':' + mm + ' ' + ap;
+  }
+  clock(); setInterval(clock, 15000);
+
+  // mirror player state into the retro window (called from paint(), ~4×/s)
+  let lastArt = '';
+  window.retroSync = function(){
+    if(document.body.dataset.skin !== 'retro') return;
+    $('rtitle').textContent  = $('title').textContent;
+    $('rartist').textContent = $('artist').textContent;
+    $('rwin-track').textContent = st.id ? $('title').textContent : 'Media Player';
+    const src = $('art').getAttribute('data-src');
+    if(src && src !== lastArt){ lastArt = src; $('rart').src = src; }
+    $('r-play').textContent = st.playing ? '❚❚' : '►';
+    $('r-fill').style.width = $('fill').style.width;
+    $('r-tnow').textContent = $('t-now').textContent;
+    $('r-tend').textContent = $('t-end').textContent;
+    $('r-status').textContent = !st.id ? 'Ready' : (st.playing ? 'Playing' : 'Paused');
+  };
+})();
+function retroSync(){ if(window.retroSync) window.retroSync(); }
 
 /* =========================================================================
    PREMIUM — ambient depth + microinteractions. Additive polish only; every
@@ -2908,7 +3208,7 @@ function enterApp(){
 
   applyLook();
   // clear settings left over from the removed skin/background feature
-  ['nc_bg','nc_blur','nc_dim','nc_parts','nc_skin'].forEach(k => { try{ localStorage.removeItem(k); }catch(e){} });
+  ['nc_bg','nc_blur','nc_dim','nc_parts'].forEach(k => { try{ localStorage.removeItem(k); }catch(e){} });
   setTimeout(() => D.resize(), 50);   // canvas has no width until the app is shown
 
   // warm the index from cache so capture() appends instead of clobbering
