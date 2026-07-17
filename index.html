@@ -64,14 +64,6 @@
 
   /* ---------- ambient layers ---------- */
   #field{position:fixed;inset:0;z-index:0;display:block;opacity:.7;}
-  #artbg{display:none !important;}   /* album recoloring dropped per brief */
-  #photo{
-    position:fixed;inset:0;z-index:-1;pointer-events:none;
-    background-position:center;background-size:cover;background-repeat:no-repeat;
-    opacity:0;transition:opacity .6s ease, filter .3s ease;
-  }
-  #photo.on{opacity:1;}
-  #photo::after{content:"";position:absolute;inset:0;background:var(--b0);opacity:var(--dim,.55);}
 
   /* the room: layered radial blacks + one soft blue pool of light */
   #bloom{
@@ -89,7 +81,6 @@
     content:"";position:fixed;inset:0;z-index:1;pointer-events:none;
     background:radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(0,0,0,.7) 100%);
   }
-  body.has-photo #bloom{opacity:.4;}
 
   #grain{
     position:fixed;inset:0;z-index:2;pointer-events:none;opacity:.03;
@@ -388,35 +379,6 @@
   }
   .note.bad{color:#FF7A7A;}
 
-  /* ---------- settings ---------- */
-  .set-row{
-    display:flex;align-items:center;justify-content:space-between;gap:var(--s2);
-    padding:15px 0;border-bottom:1px solid rgba(255,255,255,.04);
-  }
-  .set-label{
-    font-family:var(--font-mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ash);
-    flex:0 0 auto;
-  }
-  .set-actions{display:flex;gap:var(--s1);}
-  .bg-preview{
-    height:120px;border-radius:14px;border:1px solid var(--line);margin:var(--s2) 0;
-    background-position:center;background-size:cover;
-    display:grid;place-items:center;
-    box-shadow:inset 0 0 0 1px var(--line), inset 0 2px 10px rgba(0,0,0,.5);
-  }
-  input[type=range]{
-    -webkit-appearance:none;appearance:none;flex:1;max-width:200px;height:24px;background:transparent;
-  }
-  input[type=range]::-webkit-slider-runnable-track{height:3px;background:linear-gradient(180deg,#050505,#0E0E0E);border-radius:3px;box-shadow:inset 0 1px 1px rgba(0,0,0,.8);}
-  input[type=range]::-webkit-slider-thumb{
-    -webkit-appearance:none;width:15px;height:15px;border-radius:50%;
-    background:radial-gradient(circle at 35% 30%,#fff,var(--blue-soft) 75%);margin-top:-6px;
-    box-shadow:0 0 10px var(--blue-glow),0 1px 2px rgba(0,0,0,.6);
-  }
-  input[type=range]::-moz-range-track{height:3px;background:#0E0E0E;border-radius:3px;}
-  input[type=range]::-moz-range-thumb{
-    width:15px;height:15px;border:0;border-radius:50%;background:var(--blue-soft);box-shadow:0 0 10px var(--blue-glow);
-  }
 
   /* ---------- toast ---------- */
   #toast{
@@ -508,60 +470,12 @@
     .title{font-size:clamp(24px,6vw,32px);}
   }
 
-  /* =========================================================================
-     SIMPLE SKIN — small art tile, compact text, space for the background,
-     a starfield with drifting ships filling the freed space.
-     ========================================================================= */
-  #stars{position:fixed;inset:0;z-index:0;display:none;pointer-events:none;}
-  body[data-skin="simple"] #stars{display:block;}
-  body[data-skin="simple"] #field{opacity:.25;}         /* calm the particles */
-  body[data-skin="simple"] #bloom{opacity:.4;}
-
-  /* skin toggle buttons */
-  .skin-opt.on{color:#05070C;background:radial-gradient(120% 120% at 30% 20%,#fff,#DCE4F5 45%,#A9BCEB);border-color:rgba(255,255,255,.5);}
-
-  /* the whole now-playing block shrinks to a compact bar pinned low,
-     leaving the upper screen open for the starfield + photo. */
-  body[data-skin="simple"] .stage{
-    justify-content:flex-end;gap:var(--s3);
-  }
-  body[data-skin="simple"] .art-wrap{
-    justify-content:flex-start;perspective:none;
-  }
-  body[data-skin="simple"] .art{
-    width:64px;height:64px;cursor:default;
-    transform:none !important;
-  }
-  body[data-skin="simple"] .art-face{border-radius:14px;}
-  body[data-skin="simple"] .art-front{
-    box-shadow:0 12px 30px -10px rgba(0,0,0,.8), inset 0 0 0 1px var(--line-2);
-  }
-  body[data-skin="simple"] .art-front::before,
-  body[data-skin="simple"] .art-back{display:none;}
-
-  /* art + text share one row */
-  body[data-skin="simple"] .stage{position:relative;}
+  /* #stars canvas kept hidden — the Simple skin (and its starfield) is gone */
+  #stars{display:none !important;}
   .now-row{display:contents;}
-  body[data-skin="simple"] .now-row{
-    display:flex;align-items:center;gap:var(--s2);
-  }
-  body[data-skin="simple"] .meta{text-align:left;padding:0;flex:1;min-width:0;}
-  body[data-skin="simple"] .title{
-    font-size:clamp(17px,4.6vw,21px);margin:0 0 4px;line-height:1.15;
-    -webkit-line-clamp:1;
-  }
-  body[data-skin="simple"] .artist{font-size:10px;letter-spacing:.18em;}
-
-  /* in Full skin the art and meta are separate blocks; in Simple we group
-     them visually via order + the wrapper below (added in JS-free way): */
-  body[data-skin="simple"] .cat, body[data-skin="simple"] #cat{opacity:.9;}
-
-  /* dim the heavy chrome so the space reads as the focus */
-  body[data-skin="simple"] .transport{opacity:.96;}
 
   /* =========================================================================
-     AURA SKIN — a glowing being floating in a cosmic void. Fixed cosmic
-     background (no photo). Player sits compact at the bottom.
+     AURA SKIN — a glowing being floating in a cosmic void. The only skin.
      ========================================================================= */
   #aura{position:fixed;inset:0;z-index:0;display:none;pointer-events:none;}
   body[data-skin="aura"] #aura{display:block;}
@@ -575,8 +489,6 @@
   body[data-skin="aura"] #aura-figure{display:block;}
   body[data-skin="aura"] #field,
   body[data-skin="aura"] #stars,
-  body[data-skin="aura"] #artbg,
-  body[data-skin="aura"] #photo,
   body[data-skin="aura"] #bloom{display:none !important;}
   body[data-skin="aura"]{background:#000;}
 
@@ -797,14 +709,12 @@
 
 </style>
 </head>
-<body class="paused">
+<body class="paused" data-skin="aura">
 
 <canvas id="field"></canvas>
 <canvas id="stars"></canvas>
 <canvas id="aura"></canvas>
 <img id="aura-figure" alt="" src="assets/A746F679-403C-4E9F-9F52-21E877A75C0D.png">
-<div id="artbg"></div>
-<div id="photo"></div>
 <div id="bloom"></div>
 <div id="grain"></div>
 <div id="cursor-glow"></div>
@@ -833,7 +743,6 @@
       <button class="chip" id="btn-lists">Lists</button>
       <button class="chip" id="btn-queue">Queue</button>
       <button class="chip" id="btn-device">Output</button>
-      <button class="chip" id="btn-style">Style</button>
     </div>
   </header>
 
@@ -942,47 +851,6 @@
   <div class="sheet-body" id="lists"><div class="note loading">Loading playlists</div></div>
 </div>
 
-<div class="sheet" id="sheet-style">
-  <div class="sheet-head">
-    <h2>Style</h2>
-    <button class="sheet-close" data-close>Close</button>
-  </div>
-  <div class="sheet-body">
-    <div class="set-row">
-      <span class="set-label">Skin</span>
-      <div class="set-actions">
-        <button class="row-add skin-opt" data-skin="full">Full</button>
-        <button class="row-add skin-opt" data-skin="simple">Simple</button>
-        <button class="row-add skin-opt" data-skin="aura">Aura</button>
-      </div>
-    </div>
-    <div class="set-row">
-      <span class="set-label">Background</span>
-      <div class="set-actions">
-        <label class="row-add" for="bg-file" style="cursor:pointer">Choose photo</label>
-        <button class="row-add" id="bg-clear">Clear</button>
-      </div>
-    </div>
-    <input type="file" id="bg-file" accept="image/*" hidden>
-    <div id="bg-preview" class="bg-preview"><span class="note" style="padding:0">No photo</span></div>
-
-    <div class="set-row">
-      <span class="set-label">Blur</span>
-      <input type="range" id="bg-blur" min="0" max="40" step="1" value="0">
-    </div>
-    <div class="set-row">
-      <span class="set-label">Dim</span>
-      <input type="range" id="bg-dim" min="0" max="90" step="1" value="45">
-    </div>
-    <div class="set-row">
-      <span class="set-label">Particles</span>
-      <input type="range" id="fx-parts" min="0" max="100" step="1" value="100">
-    </div>
-    <div class="note" style="text-align:left;padding:14px 0 0">
-      Colors still come from the album art. The photo sits underneath.
-    </div>
-  </div>
-</div>
 
 <div id="toast"></div>
 
@@ -1972,6 +1840,8 @@ const D = (function(){
 
   function frame(now){
     raf = requestAnimationFrame(frame);
+    // the cat lives on the seek bar, which is hidden in the Aura skin — skip
+    if(document.body.dataset.skin === 'aura'){ last = now; return; }
     if(!w){ size(); return; }
     let dt = (now - last) / 1000; last = now;
     if(dt > 0.05) dt = 0.05;
@@ -2207,7 +2077,7 @@ draggable($('vol'),
 /* =========================================================================
    SHEETS — explicit open and close
    ========================================================================= */
-const SHEETS = ['sheet-search','sheet-queue','sheet-device','sheet-lists','sheet-style'];
+const SHEETS = ['sheet-search','sheet-queue','sheet-device','sheet-lists'];
 function openSheet(id){
   SHEETS.forEach(s => $(s).classList.toggle('open', s === id));
   $('scrim').classList.add('on');
@@ -2224,7 +2094,6 @@ $('btn-search').onclick = () => { openSheet('sheet-search'); loadLibrary(false);
 $('btn-queue').onclick  = () => { openSheet('sheet-queue'); loadQueue(); };
 $('btn-device').onclick = () => { openSheet('sheet-device'); loadDevices(); };
 $('btn-lists').onclick  = () => { openSheet('sheet-lists'); loadLists(false); };
-$('btn-style').onclick  = () => { openSheet('sheet-style'); applyLook(); };
 
 /* ---------- shared row (takes a normalized track) ----------
    `context` is the list the track came from. Playing with the rest of the
@@ -2726,101 +2595,13 @@ function renderLists(){
 }
 
 /* =========================================================================
-   STYLE — background photo, blur, dim, particle density
+   SKIN — the app runs the Aura skin exclusively (no skin switcher, no
+   background-photo setting). applyLook is kept as the single entry point
+   that pins the skin, so existing callers (boot) stay valid.
    ========================================================================= */
-const LOOK = {
-  get bg(){ return localStorage.getItem('nc_bg'); },
-  set bg(v){ localStorage.setItem('nc_bg', v); },   // throws on quota — caller catches
-  clearBg(){ localStorage.removeItem('nc_bg'); },
-  get blur(){ return +localStorage.getItem('nc_blur') || 0; },
-  set blur(v){ localStorage.setItem('nc_blur', v); },
-  get dim(){ const v = localStorage.getItem('nc_dim'); return v === null ? 45 : +v; },
-  set dim(v){ localStorage.setItem('nc_dim', v); },
-  get parts(){ const v = localStorage.getItem('nc_parts'); return v === null ? 100 : +v; },
-  set parts(v){ localStorage.setItem('nc_parts', v); },
-  get skin(){ return localStorage.getItem('nc_skin') || 'full'; },
-  set skin(v){ localStorage.setItem('nc_skin', v); }
-};
-
 function applyLook(){
-  const el = $('photo');
-  const src = LOOK.bg;
-  if(src){
-    el.style.backgroundImage = 'url("' + src + '")';
-    el.classList.add('on');
-    document.body.classList.add('has-photo');
-    $('bg-preview').style.backgroundImage = 'url("' + src + '")';
-    $('bg-preview').innerHTML = '';
-  }else{
-    el.style.backgroundImage = '';
-    el.classList.remove('on');
-    document.body.classList.remove('has-photo');
-    $('bg-preview').style.backgroundImage = '';
-    $('bg-preview').innerHTML = '<span class="note" style="padding:0">No photo</span>';
-  }
-  el.style.filter = 'blur(' + LOOK.blur + 'px)';
-  el.style.setProperty('--dim', (LOOK.dim / 100).toFixed(2));
-
-  $('bg-blur').value  = LOOK.blur;
-  $('bg-dim').value   = LOOK.dim;
-  $('fx-parts').value = LOOK.parts;
-  P.setDensity(LOOK.parts / 100);
-
-  document.body.dataset.skin = LOOK.skin;
-  document.querySelectorAll('.skin-opt').forEach(b =>
-    b.classList.toggle('on', b.dataset.skin === LOOK.skin));
+  document.body.dataset.skin = 'aura';
 }
-
-/* downscale before storing — a full-res photo will blow the storage quota */
-function shrink(file, cb){
-  const reader = new FileReader();
-  reader.onload = e => {
-    const img = new Image();
-    img.onload = () => {
-      const max = 1400;
-      const scale = Math.min(1, max / Math.max(img.width, img.height));
-      const c = document.createElement('canvas');
-      c.width  = Math.round(img.width * scale);
-      c.height = Math.round(img.height * scale);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      cb(c.toDataURL('image/jpeg', 0.78));
-    };
-    img.onerror = () => toast('Could not read that image');
-    img.src = e.target.result;
-  };
-  reader.onerror = () => toast('Could not read that file');
-  reader.readAsDataURL(file);
-}
-
-$('bg-file').addEventListener('change', e => {
-  const file = e.target.files && e.target.files[0];
-  if(!file) return;
-  toast('Processing photo');
-  shrink(file, dataUrl => {
-    try{
-      LOOK.bg = dataUrl;
-      applyLook();
-      toast('Background set');
-    }catch(err){
-      toast('Photo too large — try a smaller one');
-    }
-  });
-  e.target.value = '';
-});
-$('bg-clear').onclick = () => { LOOK.clearBg(); applyLook(); toast('Background cleared'); };
-$('bg-blur').addEventListener('input', e => { LOOK.blur = e.target.value; applyLook(); });
-$('bg-dim').addEventListener('input',  e => { LOOK.dim  = e.target.value; applyLook(); });
-$('fx-parts').addEventListener('input', e => { LOOK.parts = e.target.value; P.setDensity(e.target.value / 100); });
-document.querySelectorAll('.skin-opt').forEach(b => {
-  b.onclick = () => {
-    LOOK.skin = b.dataset.skin;
-    document.body.dataset.skin = LOOK.skin;
-    document.querySelectorAll('.skin-opt').forEach(x => x.classList.toggle('on', x === b));
-    // canvases measured 0 while their skin was hidden — resize on activation
-    setTimeout(() => { try{ AU.resize(); SF.resize(); D.resize(); }catch(e){} }, 30);
-    buzz(8);
-  };
-});
 
 /* =========================================================================
    PREMIUM — ambient depth + microinteractions. Additive polish only; every
@@ -2878,7 +2659,7 @@ document.querySelectorAll('.skin-opt').forEach(b => {
     addEventListener('pointerup', () => { if(pressed){ pressed=false; el.classList.remove('press'); if(el.matches(':hover')) set(); else el.style.transform=''; } });
   }
   document.querySelectorAll('.tbtn').forEach(b => magnetize(b, b.classList.contains('big') ? 10 : 7));
-  document.querySelectorAll('.chip, #btn-logout, .gate-btn, .sheet-close, .skin-opt, .row-add').forEach(b => magnetize(b, 4));
+  document.querySelectorAll('.chip, #btn-logout, .gate-btn, .sheet-close, .row-add').forEach(b => magnetize(b, 4));
 
   /* ---- album art: 3D tilt toward the cursor + a glare that tracks it ---- */
   if(fine && !reduce){
