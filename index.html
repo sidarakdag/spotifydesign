@@ -1435,7 +1435,26 @@ const AU = (function(){
   const core = document.createElement('canvas');   let coreS = 0;
   const spark = document.createElement('canvas');  let sparkS = 0;
 
-  function focus(){ return { cx: w * 0.5, cy: h * 0.44 }; }
+  // The figure PNG isn't centred in its own frame — her luminous core sits at
+  // ~(0.52, 0.47) of the image. Align the warp's origin to where she actually
+  // renders (object-fit: contain), measured once per resize so there's no
+  // per-frame layout read. Falls back to screen-centre until measured.
+  const FIG_CX = 0.52, FIG_CY = 0.46;
+  let focusX = 0.5, focusY = 0.44;
+  function updateFocus(){
+    const img = document.getElementById('aura-figure');
+    if(!img || !img.naturalWidth || !img.naturalHeight) return;
+    const b = img.getBoundingClientRect();
+    if(!b.width || !b.height) return;
+    const ia = img.naturalWidth / img.naturalHeight;   // intrinsic aspect
+    const ea = b.width / b.height;
+    let rw, rh, rl, rt;                                 // rendered content box
+    if(ea > ia){ rh = b.height; rw = rh * ia; rl = b.left + (b.width - rw) / 2; rt = b.top; }
+    else       { rw = b.width;  rh = rw / ia; rl = b.left; rt = b.top + (b.height - rh) / 2; }
+    focusX = (rl + FIG_CX * rw) / innerWidth;
+    focusY = (rt + FIG_CY * rh) / innerHeight;
+  }
+  function focus(){ return { cx: w * focusX, cy: h * focusY }; }
 
   function size(){
     dpr = Math.min(devicePixelRatio || 1, 1.5);         // cap fill-rate for the heavy scene
@@ -1443,6 +1462,7 @@ const AU = (function(){
     applyBacking();
     buildSprites();
     seed();
+    updateFocus();
   }
   const MAXPX = 1400000;                                 // backing-store pixel ceiling
   let effScale = 1;                                      // actual device-px per css-px in use
@@ -1684,12 +1704,22 @@ const AU = (function(){
   setTimeout(size, 60);
   if(!reduce) raf = requestAnimationFrame(frame);
 
+  // re-measure the figure's centre once its image has actually laid out
+  (function(){
+    const fig = document.getElementById('aura-figure');
+    if(fig){
+      if(fig.complete && fig.naturalWidth) setTimeout(updateFocus, 80);
+      else fig.addEventListener('load', () => setTimeout(updateFocus, 40));
+    }
+    [200, 600, 1200].forEach(ms => setTimeout(updateFocus, ms));   // a few settle passes
+  })();
+
   document.addEventListener('visibilitychange', function(){
     if(document.hidden){ cancelAnimationFrame(raf); raf = null; }
     else if(!raf && !reduce){ last = performance.now(); raf = requestAnimationFrame(frame); }
   });
 
-  return { resize: size, setPalette, stats: () => ({ quality: +quality.toFixed(2), rscale: +rscale.toFixed(2), frameEMA: Math.round(frameEMA), active: activeCount, base: baseCount }) };
+  return { resize: size, setPalette, refocus: updateFocus, stats: () => ({ quality: +quality.toFixed(2), rscale: +rscale.toFixed(2), frameEMA: Math.round(frameEMA), active: activeCount, base: baseCount, fx: +focusX.toFixed(3), fy: +focusY.toFixed(3) }) };
 })();
 
 /* =========================================================================
