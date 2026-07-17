@@ -479,25 +479,43 @@
      ========================================================================= */
   #aura{position:fixed;inset:0;z-index:0;display:none;pointer-events:none;}
   body[data-skin="aura"] #aura{display:block;}
-  /* wrapper centres her and carries the beat pulse; the img floats + breathes */
+  /* wrapper centres her and carries the beat pulse; inner floats; hair waves */
   #figure-wrap{
     position:fixed;left:50%;top:44%;z-index:1;pointer-events:none;display:none;
     transform:translate(-50%,-50%) scale(calc(1 + var(--pulse,0) * .05));
     will-change:transform;
   }
   body[data-skin="aura"] #figure-wrap{display:block;}
+  #figure-inner{
+    display:inline-block;position:relative;will-change:transform;
+    animation:figFloat 6.5s ease-in-out infinite;
+  }
   #aura-figure{
     height:62vh;width:auto;max-width:92vw;object-fit:contain;display:block;
-    will-change:transform;
     /* No CSS drop-shadow: a blurred shadow over the animating warp forces a
        per-frame re-blur (kills the framerate). Her glow comes from the warp
-       core bloom on the canvas behind her instead — free and beat-reactive. */
-    animation:figFloat 6.5s ease-in-out infinite;
+       core bloom on the canvas behind her instead — free and beat-reactive.
+       Masked so the (static) hair area is left to the waving overlay below. */
+    -webkit-mask-image:linear-gradient(to bottom, transparent 0%, transparent 22%, #000 40%);
+    mask-image:linear-gradient(to bottom, transparent 0%, transparent 22%, #000 40%);
+  }
+  /* a copy showing only her hair, gently swaying on top of the still body */
+  #aura-hair{
+    position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;
+    -webkit-mask-image:linear-gradient(to bottom, #000 0%, #000 26%, transparent 44%);
+    mask-image:linear-gradient(to bottom, #000 0%, #000 26%, transparent 44%);
+    transform-origin:50% 36%;will-change:transform;
+    animation:hairWave 4.2s ease-in-out infinite;
   }
   /* slow drift + sway, so she's alive rather than pinned */
   @keyframes figFloat{
     0%,100%{ transform:translateY(-1.6%) rotate(-1.3deg); }
     50%    { transform:translateY(1.8%)  rotate(1.3deg); }
+  }
+  /* the hair ripples — skew + drift pivoted at the neck, so tips move most */
+  @keyframes hairWave{
+    0%,100%{ transform:skewX(-2.4deg) translateX(-0.7%) rotate(-0.5deg); }
+    50%    { transform:skewX(2.4deg)  translateX(0.7%)  rotate(0.5deg); }
   }
   body[data-skin="aura"] #field,
   body[data-skin="aura"] #stars,
@@ -726,7 +744,7 @@
 <canvas id="field"></canvas>
 <canvas id="stars"></canvas>
 <canvas id="aura"></canvas>
-<div id="figure-wrap"><img id="aura-figure" alt="" src="assets/A746F679-403C-4E9F-9F52-21E877A75C0D.png"></div>
+<div id="figure-wrap"><div id="figure-inner"><img id="aura-figure" alt="" src="assets/A746F679-403C-4E9F-9F52-21E877A75C0D.png"><img id="aura-hair" alt="" aria-hidden="true" src="assets/A746F679-403C-4E9F-9F52-21E877A75C0D.png"></div></div>
 <div id="bloom"></div>
 <div id="grain"></div>
 <div id="cursor-glow"></div>
@@ -1385,22 +1403,28 @@ const AU = (function(){
   let govT = 0;              // seconds since last adjust
 
   // palette — streaks are drawn batched per colour, so strokeStyle is set at
-  // most HUES times per frame, never per-star. Defaults to a full spectrum;
-  // setPalette() narrows it to the album's two dominant hues (a duotone band).
+  // most HUES times per frame, never per-star. It's a tight duotone BAND (not a
+  // rainbow): a cohesive default cool aura, replaced by the album's two hues.
   const HUES = 48;
   const pal = new Array(HUES);
-  let curH1 = null, curH2 = null;                 // null = default rainbow
-  for(let i = 0; i < HUES; i++) pal[i] = 'hsl(' + Math.round(i / HUES * 360) + ' 95% 68%)';
+  const palLo = new Array(HUES);                  // desaturated near-white cores
+  let curH1 = 205, curH2 = 280;                   // default: cool blue → violet
+
+  function buildPal(h1, h2){
+    const d = ((h2 - h1 + 540) % 360) - 180;      // signed shortest hue delta
+    for(let i = 0; i < HUES; i++){
+      const hue = (((h1 + d * (i / (HUES - 1))) % 360) + 360) % 360;
+      pal[i]   = 'hsl(' + Math.round(hue) + ' 88% 66%)';
+      palLo[i] = 'hsl(' + Math.round(hue) + ' 70% 88%)';   // bright, near-white core
+    }
+  }
+  buildPal(curH1, curH2);
 
   // set the warp colours from two album hues (degrees). Rebuilds the palette
   // band + retints the halo and core so the whole scene takes the album's mood.
   function setPalette(h1, h2){
     curH1 = h1; curH2 = h2;
-    const d = ((h2 - h1 + 540) % 360) - 180;      // signed shortest hue delta
-    for(let i = 0; i < HUES; i++){
-      const hue = (((h1 + d * (i / (HUES - 1))) % 360) + 360) % 360;
-      pal[i] = 'hsl(' + Math.round(hue) + ' 92% 66%)';
-    }
+    buildPal(h1, h2);
     buildHalo(); buildCore();
     document.documentElement.style.setProperty('--aura-h1', Math.round(h1));
     document.documentElement.style.setProperty('--aura-h2', Math.round(h2));
@@ -1477,14 +1501,10 @@ const AU = (function(){
     const hc = halo.getContext('2d'), c = d / 2;
     hc.clearRect(0, 0, d, d);
     let cg; try{ cg = hc.createConicGradient(0, c, c); }catch(e){ cg = null; }
-    if(cg){
-      if(curH1 == null){                                  // default: full rainbow
-        for(let i = 0; i <= 12; i++) cg.addColorStop(i / 12, 'hsl(' + (i / 12 * 360) + ' 90% 62%)');
-      }else{                                              // album duotone ring: h1→h2→h1
-        cg.addColorStop(0.00, 'hsl(' + Math.round(curH1) + ' 88% 60%)');
-        cg.addColorStop(0.50, 'hsl(' + Math.round(curH2) + ' 88% 62%)');
-        cg.addColorStop(1.00, 'hsl(' + Math.round(curH1) + ' 88% 60%)');
-      }
+    if(cg){                                               // cohesive duotone ring: h1→h2→h1
+      cg.addColorStop(0.00, 'hsl(' + Math.round(curH1) + ' 82% 58%)');
+      cg.addColorStop(0.50, 'hsl(' + Math.round(curH2) + ' 82% 60%)');
+      cg.addColorStop(1.00, 'hsl(' + Math.round(curH1) + ' 82% 58%)');
       hc.fillStyle = cg;
     }else hc.fillStyle = '#6a5acd';
     hc.fillRect(0, 0, d, d);
@@ -1501,7 +1521,7 @@ const AU = (function(){
     coreS = Math.max(2, Math.round(Math.min(w, h) * 0.5 * dpr));
     core.width = core.height = coreS;
     const cc = core.getContext('2d'), c = coreS / 2;
-    const hue = (curH1 == null) ? 258 : Math.round(curH1);  // album-tinted glow behind her
+    const hue = Math.round(curH1);                          // album-tinted glow behind her
     const g = cc.createRadialGradient(c, c, 0, c, c, c);
     g.addColorStop(0,    'rgba(255,255,255,1)');
     g.addColorStop(0.16, 'rgba(234,238,255,0.75)');
@@ -1554,10 +1574,12 @@ const AU = (function(){
     const hs = haloR * (1.35 + beat * 0.2);
     ctx.drawImage(halo, cx - hs / 2, cy - hs / 2, hs, hs);
 
-    // warp streaks — batched: one strokeStyle + one stroke per colour bucket
-    ctx.globalAlpha = 0.85;
-    ctx.lineWidth = Math.max(0.6, 1.15 * (0.7 + rscale * 0.3));
+    // warp streaks, two passes for a premium light-streak read: a soft WIDE
+    // coloured glow (batched per hue), then a thin WHITE-HOT core over the top.
+    // Pass 1 also advances/recycles the stars; pass 2 just re-reads them.
     ctx.lineCap = 'round';
+    ctx.globalAlpha = 0.5;
+    ctx.lineWidth = Math.max(1.4, 2.6 * (0.7 + rscale * 0.3));
     let bucket = -1;
     for(let i = 0; i < activeCount; i++){
       const s = stars[i];
@@ -1578,6 +1600,22 @@ const AU = (function(){
       ctx.lineTo(x2, y2);
     }
     if(bucket !== -1) ctx.stroke();
+
+    // pass 2 — the bright core down the middle of each streak (single white path)
+    ctx.globalAlpha = 0.9;
+    ctx.strokeStyle = 'rgba(238,244,255,1)';
+    ctx.lineWidth = Math.max(0.5, 0.85 * (0.7 + rscale * 0.3));
+    ctx.beginPath();
+    for(let i = 0; i < activeCount; i++){
+      const s = stars[i];
+      if(s.z <= 0.02) continue;
+      const r  = (s.spread / s.z) * K;
+      const pz = s.z + s.spd * surge * dt * TAIL;
+      const pr = (s.spread / pz) * K;
+      ctx.moveTo(cx + s.dx * pr, cy + s.dy * pr);
+      ctx.lineTo(cx + s.dx * r,  cy + s.dy * r);
+    }
+    ctx.stroke();
 
     // the brilliant core right behind her (sprite blit, beat-scaled).
     // alpha kept low because the motion-blur veil lets it build up over frames.
