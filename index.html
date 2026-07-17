@@ -884,6 +884,58 @@
 
   @media (prefers-reduced-motion: reduce){ #retro::after{display:none;} }
 
+  /* =========================================================================
+     SKINS PICKER — selectable cards in a sheet
+     ========================================================================= */
+  .skin-card{
+    display:flex;align-items:center;gap:var(--s2);width:100%;text-align:left;
+    padding:12px;margin-bottom:10px;border-radius:var(--r-md);
+    background:linear-gradient(180deg, var(--b2), var(--b1));
+    border:1px solid var(--line);
+    box-shadow:inset 0 1px 0 var(--edge), var(--sh-1);
+    transition:border-color .2s var(--ease-out), background .2s, transform .15s var(--ease-out);
+  }
+  @media (hover:hover){ .skin-card:hover{border-color:var(--line-2);transform:translateY(-1px);} }
+  .skin-card:active{transform:scale(.99);}
+  .skin-card.active{border-color:rgba(76,123,255,.5);box-shadow:inset 0 1px 0 var(--edge), 0 0 0 1px rgba(76,123,255,.35), 0 0 22px -6px var(--blue-glow);}
+  .skin-prev{
+    flex:0 0 auto;width:66px;height:66px;border-radius:12px;overflow:hidden;
+    box-shadow:inset 0 0 0 1px var(--line-2), 0 4px 12px -6px #000;position:relative;
+  }
+  .skin-prev-aura{
+    background:
+      radial-gradient(60% 55% at 50% 46%, rgba(150,180,255,.9), rgba(120,90,220,.25) 40%, #05060c 72%),
+      conic-gradient(from 0deg at 50% 46%, #6ea0ff, #b58cff, #6ee0ff, #6ea0ff);
+    background-blend-mode:screen;
+  }
+  .skin-prev-aura::after{
+    content:"";position:absolute;inset:0;
+    background:repeating-conic-gradient(from 0deg at 50% 46%, rgba(255,255,255,.5) 0 2deg, transparent 2deg 9deg);
+    -webkit-mask:radial-gradient(closest-side at 50% 46%, transparent 18%, #000 60%);
+            mask:radial-gradient(closest-side at 50% 46%, transparent 18%, #000 60%);
+    opacity:.5;
+  }
+  .skin-prev-retro{
+    background:#0b8a8a;
+    background-image:
+      linear-gradient(#c0c0c0,#c0c0c0),
+      linear-gradient(90deg,#000082,#1a86d4);
+    background-size:70% 46%, 70% 12%;
+    background-position:50% 62%, 50% 30%;
+    background-repeat:no-repeat;
+    box-shadow:inset 0 0 0 1px var(--line-2);
+  }
+  .skin-meta{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
+  .skin-name{font-family:var(--font-display);font-size:19px;color:var(--bone);line-height:1;}
+  .skin-desc{font-size:12px;color:var(--ash);line-height:1.4;}
+  .skin-check{
+    flex:0 0 auto;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;
+    font-size:13px;color:#05070C;opacity:0;transform:scale(.6);
+    background:radial-gradient(120% 120% at 30% 20%, #fff, #A9BCEB);
+    transition:opacity .2s, transform .2s var(--ease-out);
+  }
+  .skin-card.active .skin-check{opacity:1;transform:scale(1);}
+
 </style>
 </head>
 <body class="paused" data-skin="aura">
@@ -920,7 +972,7 @@
       <button class="chip" id="btn-lists">Lists</button>
       <button class="chip" id="btn-queue">Queue</button>
       <button class="chip" id="btn-device">Output</button>
-      <button class="chip" id="btn-skin">Retro</button>
+      <button class="chip" id="btn-skin">Skins</button>
     </div>
   </header>
 
@@ -1096,6 +1148,25 @@
     <button class="sheet-close" data-close>Close</button>
   </div>
   <div class="sheet-body" id="lists"><div class="note loading">Loading playlists</div></div>
+</div>
+
+<div class="sheet" id="sheet-skins">
+  <div class="sheet-head">
+    <h2>Skins</h2>
+    <button class="sheet-close" data-close>Close</button>
+  </div>
+  <div class="sheet-body">
+    <button class="skin-card stagger-in" data-skin="aura" type="button">
+      <span class="skin-prev skin-prev-aura"></span>
+      <span class="skin-meta"><span class="skin-name">Aura</span><span class="skin-desc">A glowing being adrift in a hyperspace warp of colour that follows the music.</span></span>
+      <span class="skin-check">✓</span>
+    </button>
+    <button class="skin-card stagger-in" data-skin="retro" type="button">
+      <span class="skin-prev skin-prev-retro"></span>
+      <span class="skin-meta"><span class="skin-name">Retro 95</span><span class="skin-desc">A Windows-95 desktop — the player lives in a beveled window, with clickable shortcuts.</span></span>
+      <span class="skin-check">✓</span>
+    </button>
+  </div>
 </div>
 
 
@@ -2447,7 +2518,7 @@ draggable($('vol'),
 /* =========================================================================
    SHEETS — explicit open and close
    ========================================================================= */
-const SHEETS = ['sheet-search','sheet-queue','sheet-device','sheet-lists'];
+const SHEETS = ['sheet-search','sheet-queue','sheet-device','sheet-lists','sheet-skins'];
 function openSheet(id){
   SHEETS.forEach(s => $(s).classList.toggle('open', s === id));
   $('scrim').classList.add('on');
@@ -2969,10 +3040,14 @@ function renderLists(){
    desktop). applyLook pins the stored skin; setSkin switches + persists.
    ========================================================================= */
 function getSkin(){ return localStorage.getItem('nc_skin') === 'retro' ? 'retro' : 'aura'; }
+function markSkinCards(){
+  const s = getSkin();
+  document.querySelectorAll('.skin-card').forEach(c => c.classList.toggle('active', c.dataset.skin === s));
+}
 function applyLook(){
   const s = getSkin();
   document.body.dataset.skin = s;
-  $('btn-skin').textContent = s === 'retro' ? 'Aura' : 'Retro';
+  markSkinCards();
   if(s === 'retro'){ retroSync(); }
   else { setTimeout(() => { try{ AU.resize(); }catch(e){} }, 20); }
 }
@@ -2981,7 +3056,15 @@ function setSkin(s){
   applyLook();
   buzz(8);
 }
-$('btn-skin').onclick = () => setSkin('retro');
+// the chip opens the Skins picker; picking a card switches deliberately
+$('btn-skin').onclick = () => { markSkinCards(); openSheet('sheet-skins'); };
+document.querySelectorAll('.skin-card').forEach(card => {
+  card.onclick = () => {
+    const s = card.dataset.skin;
+    if(s !== getSkin()) setSkin(s); else markSkinCards();
+    closeSheets();
+  };
+});
 
 /* =========================================================================
    RETRO 95 — wire the Win95 window to the same player, mirror state into it,
