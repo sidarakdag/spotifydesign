@@ -1390,7 +1390,7 @@ const AU = (function(){
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   let w = 0, h = 0, dpr = 1, rscale = 1, raf = null, last = performance.now(), t = 0;
-  let stars = [], sparks = [], bgstars = [], hairs = [], baseCount = 0, activeCount = 0;
+  let stars = [], sparks = [], bgstars = [], baseCount = 0, activeCount = 0;
   let seg = new Float32Array(0);        // reused streak endpoints (x1,y1,x2,y2)…
 
   // adaptive governor — two levers keep every frame inside ONE refresh interval:
@@ -1443,7 +1443,6 @@ const AU = (function(){
   // per-frame layout read. Falls back to screen-centre until measured.
   const FIG_CX = 0.52, FIG_CY = 0.46;
   let focusX = 0.5, focusY = 0.44;
-  let figBox = null;                                  // her rendered content box (px)
   function updateFocus(){
     const img = document.getElementById('aura-figure');
     if(!img || !img.naturalWidth || !img.naturalHeight) return;
@@ -1456,7 +1455,6 @@ const AU = (function(){
     else       { rw = b.width;  rh = rw / ia; rl = b.left; rt = b.top + (b.height - rh) / 2; }
     focusX = (rl + FIG_CX * rw) / innerWidth;
     focusY = (rt + FIG_CY * rh) / innerHeight;
-    figBox = { x: rl, y: rt, w: rw, h: rh };
   }
   function focus(){ return { cx: w * focusX, cy: h * focusY }; }
 
@@ -1522,18 +1520,6 @@ const AU = (function(){
       ph: Math.random() * Math.PI * 2,
       sp: 0.3 + Math.random() * 0.8
     }));
-    // flowing energy "hair" strands that stream off her head and sway/pulse
-    hairs = reduce ? [] : Array.from({length: 13}, (_, i) => {
-      const u = (i / 12) * 2 - 1;                     // -1..1 across the scalp
-      return {
-        u,
-        len: 0.34 + Math.random() * 0.20,             // fraction of her height
-        amp: 0.03 + Math.random() * 0.05,             // wave amplitude (× her width)
-        freq: 0.7 + Math.random() * 0.7,
-        phase: Math.random() * Math.PI * 2,
-        out: u * (0.9 + Math.random() * 0.5)          // outward drift, stronger at the sides
-      };
-    });
   }
 
   /* ---- sprites, built once per resize ---- */
@@ -1685,44 +1671,6 @@ const AU = (function(){
       const sz = sparkS / dpr * sp.scale * (0.7 + tw * 0.5) * (1 + beat * 0.6);
       ctx.globalAlpha = Math.min(1, a);
       ctx.drawImage(spark, sp.x - sz / 2, sp.y - sz / 2, sz, sz);
-    }
-
-    // flowing luminous "hair" — strands streaming off her scalp, waving and
-    // drifting outward, brighter on the beat. Drawn behind the figure so only
-    // the parts that fan out past her silhouette show — reads as living hair.
-    if(figBox && hairs.length){
-      const fb = figBox;
-      const headX = fb.x + 0.52 * fb.w;                 // her head centre
-      const scalpY = fb.y + 0.185 * fb.h;               // right at her crown
-      const headHW = fb.w * 0.045;
-      const figH  = fb.h * 0.677;                       // her actual height
-      const beatA = 1 + beat * 0.55;
-      const hueC  = Math.round(curH1);
-      const hsl = 'hsla(' + hueC + ',92%,86%,';
-      ctx.globalAlpha = 1;
-      ctx.lineCap = 'round';
-      ctx.lineWidth = Math.max(1, fb.w * 0.006);
-      for(let i = 0; i < hairs.length; i++){
-        const s = hairs[i];
-        const sx = headX + s.u * headHW;
-        const L  = s.len * figH;
-        const amp = s.amp * fb.w * beatA;
-        const outMax = s.out * fb.w * 0.16;             // fan out from the head
-        ctx.beginPath();
-        for(let k = 0; k <= 10; k++){
-          const tt = k / 10;
-          const ex = sx + outMax * (0.35 * tt + 0.65 * tt * tt) + Math.sin(t * s.freq * 1.6 + s.phase + tt * 3.6) * amp * tt;
-          const ey = scalpY + tt * L;
-          if(k === 0) ctx.moveTo(ex, ey); else ctx.lineTo(ex, ey);
-        }
-        // bright AT the scalp (so it visibly grows from her head), then to tip
-        const g = ctx.createLinearGradient(sx, scalpY, sx, scalpY + L);
-        g.addColorStop(0.00, hsl + (0.5 * beatA).toFixed(2) + ')');
-        g.addColorStop(0.12, hsl + (0.62 * beatA).toFixed(2) + ')');
-        g.addColorStop(1.00, hsl + '0)');
-        ctx.strokeStyle = g;
-        ctx.stroke();
-      }
     }
 
     ctx.globalAlpha = 1;
