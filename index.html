@@ -1693,8 +1693,8 @@ const AU = (function(){
     if(figBox && hairs.length){
       const fb = figBox;
       const headX = fb.x + 0.52 * fb.w;                 // her head centre
-      const scalpY = fb.y + 0.24 * fb.h;                // rooted inside her head
-      const headHW = fb.w * 0.05;
+      const scalpY = fb.y + 0.185 * fb.h;               // right at her crown
+      const headHW = fb.w * 0.045;
       const figH  = fb.h * 0.677;                       // her actual height
       const beatA = 1 + beat * 0.55;
       const hueC  = Math.round(curH1);
@@ -1715,10 +1715,10 @@ const AU = (function(){
           const ey = scalpY + tt * L;
           if(k === 0) ctx.moveTo(ex, ey); else ctx.lineTo(ex, ey);
         }
-        // fade IN from the root then out to the tip — no bright dot at the scalp
+        // bright AT the scalp (so it visibly grows from her head), then to tip
         const g = ctx.createLinearGradient(sx, scalpY, sx, scalpY + L);
-        g.addColorStop(0.00, hsl + '0)');
-        g.addColorStop(0.22, hsl + (0.55 * beatA).toFixed(2) + ')');
+        g.addColorStop(0.00, hsl + (0.5 * beatA).toFixed(2) + ')');
+        g.addColorStop(0.12, hsl + (0.62 * beatA).toFixed(2) + ')');
         g.addColorStop(1.00, hsl + '0)');
         ctx.strokeStyle = g;
         ctx.stroke();
