@@ -1393,13 +1393,15 @@ const AU = (function(){
   let stars = [], sparks = [], bgstars = [], baseCount = 0, activeCount = 0;
   let seg = new Float32Array(0);        // reused streak endpoints (x1,y1,x2,y2)…
 
-  // adaptive governor — two levers keep every frame inside the 60fps budget:
-  // first trim how many stars are drawn (no reallocation — just a smaller
-  // active slice of a pre-sorted array), then, only if still starved, drop the
-  // internal render resolution. Restores both when there's headroom.
-  const TARGET = 16.7;          // ms per frame
-  let quality = 1;             // 1 .. 0.25  — fraction of stars drawn
-  let frameEMA = 16;          // smoothed frame time
+  // adaptive governor — two levers keep every frame inside ONE refresh interval:
+  // first trim how many stars are drawn (no reallocation — just a smaller active
+  // slice of a pre-sorted array), then, only if still starved, drop the internal
+  // render resolution. Restores both when there's headroom. TARGET is calibrated
+  // to the display's real refresh rate at startup, so a 120Hz screen runs at
+  // ~120fps and a 60Hz screen at ~60fps (with more particles), automatically.
+  let TARGET = 16.7;           // one refresh interval (ms) — set by calibrate()
+  let quality = 1;             // 1 .. 0.2  — fraction of stars drawn
+  let renderEMA = 8;          // smoothed *render work* time (not the vsync gap)
   let govT = 0;              // seconds since last adjust
 
   // palette — streaks are drawn batched per colour, so strokeStyle is set at
@@ -1594,9 +1596,11 @@ const AU = (function(){
 
     // motion-blur veil instead of a hard clear: keeps a fading echo of the last
     // frames so the streaks read as continuous light. The background between
-    // streaks falls to black — deep space, no colour wash.
+    // streaks falls to black — deep space, no colour wash. The per-frame fade
+    // is scaled by dt so trail LENGTH is identical at 60 or 120fps.
     ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = 'rgba(0,0,0,0.26)';
+    const fade = 1 - Math.pow(1 - 0.26, dt * 60);
+    ctx.fillStyle = 'rgba(0,0,0,' + fade.toFixed(3) + ')';
     ctx.fillRect(0, 0, w, h);
 
     ctx.globalCompositeOperation = 'lighter';
@@ -1673,19 +1677,23 @@ const AU = (function(){
     ctx.globalCompositeOperation = 'source-over';
   }
 
-  /* trim star count first; if pinned at the floor and still slow, drop the
-     internal render resolution. Restore both when there's headroom. */
-  function govern(dtMs){
-    frameEMA += (dtMs - frameEMA) * 0.1;
+  /* Governs on RENDER time (how long draw() takes), not the frame interval —
+     the interval is pinned to the refresh rate by vsync and says nothing about
+     spare headroom. Keeping render safely inside one refresh interval lets the
+     display reach its native rate (120fps on 120Hz); leftover budget is spent
+     adding particles. A missed frame (interval ≫ refresh) also forces a trim. */
+  function govern(renderMs, dtMs){
+    renderEMA += (renderMs - renderEMA) * 0.1;
     govT += dtMs / 1000;
     if(govT < 0.4) return;
     govT = 0;
-    if(frameEMA > TARGET * 1.2){
-      if(quality > 0.2){ quality = Math.max(0.2, quality - 0.12); activeCount = Math.round(baseCount * quality); }
+    const dropped = dtMs > TARGET * 1.5;
+    if(renderEMA > TARGET * 0.82 || dropped){
+      if(quality > 0.2){ quality = Math.max(0.2, quality - 0.1); activeCount = Math.round(baseCount * quality); }
       else if(rscale > 0.4){ rscale = Math.max(0.4, rscale - 0.15); applyBacking(); buildSprites(); }
-    }else if(frameEMA < TARGET * 0.85){
+    }else if(renderEMA < TARGET * 0.6){
       if(rscale < 1){ rscale = Math.min(1, rscale + 0.1); applyBacking(); buildSprites(); }
-      else if(quality < 1){ quality = Math.min(1, quality + 0.1); activeCount = Math.round(baseCount * quality); }
+      else if(quality < 1){ quality = Math.min(1, quality + 0.08); activeCount = Math.round(baseCount * quality); }
     }
   }
 
@@ -1696,13 +1704,32 @@ const AU = (function(){
     let dt = dtMs / 1000;
     if(dt > 0.05) dt = 0.05;
     t += dt;
+    const t0 = performance.now();
     draw(dt);
-    govern(dtMs);
+    govern(performance.now() - t0, dtMs);      // measure actual render work
+  }
+
+  // measure the display's real refresh interval with a few empty frames, then
+  // target one frame per refresh (→ 120fps on a 120Hz panel, 60 on a 60Hz one)
+  function calibrate(done){
+    let n = 0, lastT = performance.now(); const ds = [];
+    (function tick(now){
+      const d = now - lastT; lastT = now;
+      if(n++ > 3) ds.push(d);                    // skip the first noisy frames
+      if(n < 32) requestAnimationFrame(tick);
+      else{
+        ds.sort((a, b) => a - b);
+        const refresh = ds[Math.floor(ds.length * 0.3)] || 16.7;   // fast-cluster estimate
+        TARGET = Math.max(7, Math.min(17, refresh));               // one frame per refresh
+        renderEMA = TARGET * 0.6;
+        done();
+      }
+    })(lastT);
   }
 
   addEventListener('resize', size);
   setTimeout(size, 60);
-  if(!reduce) raf = requestAnimationFrame(frame);
+  if(!reduce) calibrate(() => { last = performance.now(); raf = requestAnimationFrame(frame); });
 
   // re-measure the figure's centre once its image has actually laid out
   (function(){
@@ -1719,7 +1746,7 @@ const AU = (function(){
     else if(!raf && !reduce){ last = performance.now(); raf = requestAnimationFrame(frame); }
   });
 
-  return { resize: size, setPalette, refocus: updateFocus, stats: () => ({ quality: +quality.toFixed(2), rscale: +rscale.toFixed(2), frameEMA: Math.round(frameEMA), active: activeCount, base: baseCount, fx: +focusX.toFixed(3), fy: +focusY.toFixed(3) }) };
+  return { resize: size, setPalette, refocus: updateFocus, stats: () => ({ quality: +quality.toFixed(2), rscale: +rscale.toFixed(2), target: +TARGET.toFixed(1), renderEMA: +renderEMA.toFixed(1), active: activeCount, base: baseCount, fx: +focusX.toFixed(3), fy: +focusY.toFixed(3) }) };
 })();
 
 /* =========================================================================
