@@ -3048,7 +3048,7 @@ function applyLook(){
   const s = getSkin();
   document.body.dataset.skin = s;
   markSkinCards();
-  if(s === 'retro'){ retroSync(); }
+  if(s === 'retro'){ retroSync(); if(window.retroShowWin) window.retroShowWin(); }
   else { setTimeout(() => { try{ AU.resize(); }catch(e){} }, 20); }
 }
 function setSkin(s){
@@ -3091,14 +3091,45 @@ document.querySelectorAll('.skin-card').forEach(card => {
     setTimeout(poll, 300);
   });
 
-  // window + taskbar chrome
-  $('rwin-close').onclick = () => setSkin('aura');       // "close" → back to Aura
+  // window + taskbar chrome — close/minimise just HIDE the window (you stay on
+  // the retro desktop); reopen from the taskbar button. Switching back to Aura
+  // is done from the Start menu or the Aura.exe icon, never by closing.
   const win = $('rwin'), taskBtn = $('tb-task');
-  function toggleMin(){ win.classList.toggle('min'); taskBtn.classList.toggle('active', !win.classList.contains('min')); }
-  $('rwin-min').onclick = toggleMin;
-  $('rwin-max').onclick = () => { win.classList.remove('min'); taskBtn.classList.add('active'); };
-  taskBtn.onclick = () => { if(win.classList.contains('min')){ win.classList.remove('min'); taskBtn.classList.add('active'); } else toggleMin(); };
+  function showWin(){ win.classList.remove('min'); taskBtn.classList.add('active'); }
+  function hideWin(){ win.classList.add('min'); taskBtn.classList.remove('active'); }
+  window.retroShowWin = showWin;
+  $('rwin-close').onclick = hideWin;
+  $('rwin-min').onclick   = hideWin;
+  $('rwin-max').onclick   = showWin;
+  taskBtn.onclick = () => { win.classList.contains('min') ? showWin() : hideWin(); };
   taskBtn.classList.add('active');
+
+  // ---- drag the window by its title bar ----
+  const title = win.querySelector('.rwin-titlebar');
+  let dragging = false, offX = 0, offY = 0;
+  title.addEventListener('pointerdown', e => {
+    if(e.target.closest('.rwin-tbtns')) return;         // don't drag when hitting the buttons
+    const r = win.getBoundingClientRect();
+    win.style.transform = 'none';                       // pin to top-left, drop the centring
+    win.style.left = r.left + 'px';
+    win.style.top  = r.top + 'px';
+    offX = e.clientX - r.left; offY = e.clientY - r.top;
+    dragging = true;
+    try{ title.setPointerCapture(e.pointerId); }catch(_){}
+    e.preventDefault();
+  });
+  title.addEventListener('pointermove', e => {
+    if(!dragging) return;
+    const wd = win.offsetWidth, tb = 42;
+    let nx = e.clientX - offX, ny = e.clientY - offY;
+    nx = Math.max(28 - wd, Math.min(nx, innerWidth - 40));      // keep a corner grabbable
+    ny = Math.max(6, Math.min(ny, innerHeight - tb));
+    win.style.left = nx + 'px';
+    win.style.top  = ny + 'px';
+  });
+  const endDrag = e => { if(dragging){ dragging = false; try{ title.releasePointerCapture(e.pointerId); }catch(_){} } };
+  title.addEventListener('pointerup', endDrag);
+  title.addEventListener('pointercancel', endDrag);
 
   // Start menu
   const start = $('rstart'), startBtn = $('tb-start');
