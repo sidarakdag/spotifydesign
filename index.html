@@ -891,9 +891,8 @@
   .rwin-stat2{flex:0 0 auto;}
 
   /* ---- folder window (Playlists) ---- */
-  /* browsing windows sit low, leaving the player's title bar peeking above */
+  /* the folder sits low, leaving the player's title bar peeking above */
   .rfolder{width:min(360px, calc(100vw - 22px));top:66%;left:51%;}
-  .rtracks{width:min(366px, calc(100vw - 18px));top:66%;left:53%;}
   .rwin-folder-ic{position:relative;display:inline-block;width:15px;height:12px;flex:0 0 auto;
     background:linear-gradient(#ffcf46,#ffdf72);box-shadow:0 0 0 1px #7a5c00;border-radius:0 2px 2px 2px;margin-top:2px;}
   .rwin-folder-ic::before{content:"";position:absolute;left:0;top:-3px;width:7px;height:3px;
@@ -915,26 +914,6 @@
   .rfolder-item .fi-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .rfolder-item .fi-sub{flex:0 0 auto;font-size:10px;color:#777;}
   .rfolder-item:hover .fi-sub, .rfolder-item.playing .fi-sub{color:#c8d0ff;}
-  /* track rows: a numbered file list, name over artist, duration on the right */
-  .rfolder-item .fi-num{
-    flex:0 0 auto;width:17px;text-align:right;font:10px/1 'JetBrains Mono',monospace;color:#888;
-  }
-  .rfolder-item:hover .fi-num, .rfolder-item.playing .fi-num{color:#b9c4ff;}
-  .rfolder-item .fi-two{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
-  .rfolder-item .fi-two b{font-weight:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .rfolder-item .fi-two i{font-style:normal;font-size:10px;color:#777;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .rfolder-item:hover .fi-two i, .rfolder-item.playing .fi-two i{color:#c8d0ff;}
-  .rfolder-item .fi-dur{flex:0 0 auto;font:10px/1 'JetBrains Mono',monospace;color:#777;}
-  .rfolder-item:hover .fi-dur, .rfolder-item.playing .fi-dur{color:#c8d0ff;}
-  /* the "play the whole thing" row at the top of a track list */
-  .rfolder-item.fi-all{border-bottom:1px solid #d0d0d0;margin-bottom:2px;font-weight:bold;}
-  .rfolder-item.fi-all .fi-glyph{
-    width:20px;height:20px;flex:0 0 auto;display:grid;place-items:center;font-size:10px;
-    background:#008080;color:#fff;box-shadow:0 0 0 1px #7a7d88;
-  }
-  /* status-bar "back to Playlists" link */
-  #rtracks-back{cursor:pointer;}
-  #rtracks-back:hover{background:#000080;color:#fff;}
   /* chunky Win95 scrollbar */
   .rfolder-body::-webkit-scrollbar{width:16px;height:16px;}
   .rfolder-body::-webkit-scrollbar-track{background:#dfdfdf;}
@@ -1220,20 +1199,6 @@
     <div class="rwin-status"><span class="rwin-stat" id="rfolder-count">0 object(s)</span><span class="rwin-stat rwin-stat2">Playlists</span></div>
   </div>
 
-  <div class="rwin rfolder rtracks min" id="rtracks">
-    <div class="rwin-titlebar">
-      <span class="rwin-ticon rwin-folder-ic"></span>
-      <span class="rwin-tname" id="rtracks-name">Playlist</span>
-      <span class="rwin-tbtns">
-        <button class="rwin-b" id="rtracks-min" type="button" aria-label="Minimize">_</button>
-        <button class="rwin-b" id="rtracks-max" type="button" aria-label="Maximize">▢</button>
-        <button class="rwin-b" id="rtracks-close" type="button" aria-label="Close">×</button>
-      </span>
-    </div>
-    <div class="rwin-menu"><span><u>F</u>ile</span><span><u>E</u>dit</span><span><u>V</u>iew</span><span><u>H</u>elp</span></div>
-    <div class="rfolder-body" id="rtracks-body"><div class="rfolder-note">Opening…</div></div>
-    <div class="rwin-status"><span class="rwin-stat" id="rtracks-count">0 object(s)</span><span class="rwin-stat rwin-stat2" id="rtracks-back">◄ Playlists</span></div>
-  </div>
 
   <div class="taskbar">
     <button class="tb-start" id="tb-start" type="button"><span class="tb-logo"></span>Start</button>
@@ -3374,150 +3339,18 @@ document.querySelectorAll('.skin-card').forEach(card => {
       const sub = document.createElement('span');
       sub.className = 'fi-sub'; sub.textContent = count + (count === 1 ? ' track' : ' tracks');
       row.append(img, name, sub);
-      // opening a playlist opens its own window, like double-clicking a folder
-      row.onclick = () => {
+      row.onclick = async () => {
+        const r = await control('/me/player/play', { method:'PUT', body: JSON.stringify({ context_uri: pl.uri }) });
+        if(!r.ok){ toast(r.msg); return; }
+        st.pos = 0;
         body.querySelectorAll('.rfolder-item.playing').forEach(n => n.classList.remove('playing'));
         row.classList.add('playing');
-        openTracks(pl);
+        showWin();                                       // pop the player up so you see it play
+        setTimeout(poll, 600);
       };
       body.appendChild(row);
     });
     $('rfolder-count').textContent = PLAYLISTS.length + ' object(s)';
-  }
-
-  /* ---- track window: the songs inside one playlist ---- */
-  const tracksWin = $('rtracks');
-  makeDraggable(tracksWin);
-  $('rtracks-close').onclick = () => closeWin(tracksWin);
-  $('rtracks-min').onclick   = () => closeWin(tracksWin);
-  $('rtracks-max').onclick   = () => openWin(tracksWin);
-  $('rtracks-back').onclick  = () => { closeWin(tracksWin); showFolder(); };
-
-  const trackCache = new Map();                          // playlist uri -> tracks, fetched once
-  let tracksToken = 0;                                   // ignore replies from a window you left
-
-  async function openTracks(pl){
-    const body = $('rtracks-body'), token = ++tracksToken;
-    $('rtracks-name').textContent = pl.name || 'Playlist';
-    $('rtracks-count').textContent = 'Reading…';
-    openWin(tracksWin);
-
-    let tracks = trackCache.get(pl.uri);
-    if(!tracks){
-      body.innerHTML = '<div class="rfolder-note">Reading disk…</div>';
-      const res = await fetchTracks(pl);
-      if(token !== tracksToken) return;                  // a different playlist was opened meanwhile
-      tracks = res.tracks;
-      if(!tracks.length){
-        body.innerHTML = '<div class="rfolder-note bad">' + esc(res.msg || 'This playlist is empty') + '</div>';
-        $('rtracks-count').textContent = '0 object(s)';
-        return;
-      }
-      trackCache.set(pl.uri, tracks);
-    }
-    renderTracks(pl, tracks);
-  }
-
-  // Spotify's own words for a failure, not ours — a wrong guess here sends you
-  // hunting the wrong problem. Includes the status so it can be acted on.
-  function apiReason(r){
-    const raw = (r.data && r.data.error && r.data.error.message) || '';
-    if(r.status === 403 && (/scope/i.test(raw) || missingScopes().length))
-      return 'Your login predates the playlist permission — hit Exit, then reconnect (403)';
-    if(r.status === 403) return (raw || 'Forbidden') + ' (403)';
-    if(r.status === 404) return "Spotify won't share this playlist (404)";
-    if(r.status === 401) return 'Login expired — hit Exit and reconnect (401)';
-    return (raw || r.msg || 'Request failed') + (r.status ? ' (' + r.status + ')' : '');
-  }
-
-  // Up to 200 tracks — plenty for a folder view, and it keeps the wait short.
-  // Three request shapes are tried before giving up: the plain track list, one
-  // without the additional_types hint, and finally the playlist object itself,
-  // which carries its first 100 items. Between them one usually gets through.
-  async function fetchTracks(pl){
-    const id = pl.id || (pl.uri || '').split(':').pop();
-    if(!id) return { tracks: [], msg: 'That playlist has no id' };
-
-    const variants = [
-      { url:'/playlists/' + id + '/tracks?limit=100&additional_types=track', pick: d => d },
-      { url:'/playlists/' + id + '/tracks?limit=100',                        pick: d => d },
-      { url:'/playlists/' + id,                                             pick: d => d && d.tracks },
-    ];
-
-    let first = null, fail = null;
-    for(const v of variants){
-      const r = await api(v.url);
-      if(r.ok){
-        const page = v.pick(r.data);
-        if(page){ first = page; break; }               // keep trying if the reply is unusable
-        if(!fail) fail = { status:0, data:null, msg:'Spotify sent nothing back' };
-      }else if(!fail){
-        fail = r;                                     // the first failure is the telling one
-      }
-      console.warn('[retro] playlist read failed', v.url, r.status, r.data && r.data.error);
-    }
-    if(!first) return { tracks: [], msg: fail ? apiReason(fail) : 'Could not read this playlist' };
-
-    const out = [];
-    const take = page => ((page && page.items) || []).forEach(it => {
-      const t = it && (it.track || it);                  // items are {track:…}, but be forgiving
-      if(t && t.uri && t.type !== 'episode') out.push(t);
-    });
-    take(first);
-
-    let url = first.next || null;                        // one more page, then stop
-    if(url){
-      const r = await api(url);
-      if(r.ok) take(r.data);
-    }
-    return { tracks: out, msg: '' };
-  }
-
-  function renderTracks(pl, tracks){
-    const body = $('rtracks-body');
-    body.innerHTML = '';
-    if(!tracks.length){
-      body.innerHTML = '<div class="rfolder-note">This playlist is empty</div>';
-      $('rtracks-count').textContent = '0 object(s)';
-      return;
-    }
-
-    const mark = row => {
-      body.querySelectorAll('.rfolder-item.playing').forEach(n => n.classList.remove('playing'));
-      if(row) row.classList.add('playing');
-    };
-    const play = async (row, bodyObj) => {
-      const r = await control('/me/player/play', { method:'PUT', body: JSON.stringify(bodyObj) });
-      if(!r.ok){ toast(r.msg); return; }
-      st.pos = 0; mark(row);
-      showWin();                                         // bring the player back if it was closed…
-      focusWin(tracksWin);                               // …but keep the list on top so you can keep picking
-      setTimeout(poll, 600);
-    };
-
-    // "play the whole playlist" sits at the top of the list
-    const all = document.createElement('button');
-    all.className = 'rfolder-item fi-all'; all.type = 'button';
-    all.innerHTML = '<span class="fi-glyph">►</span><span class="fi-name">Play all</span>' +
-                    '<span class="fi-sub">' + tracks.length + '</span>';
-    all.onclick = () => play(null, { context_uri: pl.uri });
-    body.appendChild(all);
-
-    tracks.forEach((t, i) => {
-      const row = document.createElement('button');
-      row.className = 'rfolder-item'; row.type = 'button';
-      const artists = (t.artists || []).map(a => a.name).filter(Boolean).join(', ');
-      row.innerHTML =
-        '<span class="fi-num">' + (i + 1) + '</span>' +
-        '<span class="fi-two"><b>' + esc(t.name || 'Untitled') + '</b><i>' + esc(artists) + '</i></span>' +
-        '<span class="fi-dur">' + fmt(t.duration_ms || 0) + '</span>';
-      // play the track in the context of its playlist, so next/prev keep working
-      row.onclick = () => play(row, { context_uri: pl.uri, offset: { uri: t.uri } });
-      body.appendChild(row);
-    });
-
-    $('rtracks-count').textContent = tracks.length + ' object(s)';
-    body.scrollTop = 0;
   }
 
   // Start menu
@@ -3712,7 +3545,7 @@ function enterApp(){
   // brief version stamp so we can confirm the latest file actually loaded
   (function(){
     const v = document.createElement('div');
-    v.textContent = 'build v14';
+    v.textContent = 'build v15';
     v.style.cssText = 'position:fixed;right:8px;top:calc(var(--safe-t) + 4px);z-index:99;'+
       'font:9px monospace;color:#4C7BFF;opacity:.7;pointer-events:none;';
     document.body.appendChild(v);
