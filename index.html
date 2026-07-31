@@ -751,29 +751,15 @@
   body[data-skin="retro"] #retro{display:block;}
   body[data-skin="retro"]{background:#08080b;}
 
-  /* ---- the monitor casing (beige plastic, bevelled, chin at the bottom) ---- */
-  .crt{
-    position:absolute;inset:0;display:flex;flex-direction:column;
-    padding:max(var(--safe-t), 20px) 17px 0;
-    background:
-      repeating-linear-gradient(0deg, rgba(0,0,0,.03) 0 1px, transparent 1px 3px),
-      radial-gradient(140% 70% at 50% -10%, rgba(255,255,255,.5), transparent 55%),
-      linear-gradient(168deg,#efe8d6 0%,#ded6c1 30%,#cdc4ac 66%,#b3aa94 100%);
-    box-shadow:
-      inset 0 3px 0 rgba(255,255,255,.8), inset 4px 0 0 rgba(255,255,255,.32),
-      inset -4px 0 0 rgba(0,0,0,.17), inset 0 -3px 0 rgba(0,0,0,.24);
-  }
-  /* the tube itself: recessed behind a dark rim, corners rounded like glass */
+  /* ---- the tube, edge to edge (no monitor casing) ---- */
+  .crt{position:absolute;inset:0;display:flex;flex-direction:column;}
   .crt-screen{
     position:relative;flex:1;min-height:0;overflow:hidden;
-    border-radius:20px/26px;background:#02100f;   /* dead tube behind the picture */
-    box-shadow:
-      0 0 0 3px #34322b, 0 0 0 6px #6b6654, 0 0 0 7px rgba(255,255,255,.45),
-      0 8px 18px rgba(0,0,0,.55);
+    background:#02100f;                             /* dead tube behind the picture */
   }
   /* the desktop surface inside the tube */
   .crt-desk{
-    position:absolute;inset:0;padding:8px;
+    position:absolute;inset:0;padding:calc(var(--safe-t) + 8px) 8px 8px;
     background:
       radial-gradient(118% 92% at 50% 44%, #0d9a96 0%, #008787 52%, #00706f 84%, #005c5c 100%);
   }
@@ -799,7 +785,7 @@
   @keyframes crtRoll{ from{transform:translateY(0);} to{transform:translateY(285%);} }
   /* vignette + curved glass glare */
   .crt-glass{
-    z-index:62;border-radius:20px/26px;
+    z-index:62;
     background:
       linear-gradient(114deg, rgba(255,255,255,.16) 0%, rgba(255,255,255,.06) 15%, transparent 32%),
       radial-gradient(72% 58% at 50% 42%, transparent 46%, rgba(0,0,0,.34) 82%, rgba(0,0,0,.62) 100%);
@@ -818,28 +804,6 @@
   .crt.boot .crt-glass{animation:crtFlash .62s ease-out both;}
   @keyframes crtFlash{ 0%{opacity:.15;} 22%{opacity:.25;} 100%{opacity:1;} }
 
-  /* --- monitor chin --- */
-  .crt-chin{
-    flex:0 0 auto;display:flex;align-items:center;gap:9px;
-    height:calc(32px + max(var(--safe-b), 4px));padding:0 3px max(var(--safe-b), 4px);
-  }
-  .crt-badge{
-    font:bold 10px/1 'Tahoma',sans-serif;letter-spacing:.22em;color:#6c6553;
-    text-shadow:0 1px 0 rgba(255,255,255,.75);
-  }
-  .crt-vents{
-    flex:1;height:7px;border-radius:4px;
-    background:repeating-linear-gradient(90deg, rgba(0,0,0,.16) 0 2px, rgba(255,255,255,.45) 2px 4px);
-    opacity:.5;
-  }
-  .crt-model{font:9px/1 'Tahoma',sans-serif;letter-spacing:.1em;color:#8b8471;text-shadow:0 1px 0 rgba(255,255,255,.6);}
-  .crt-led{
-    width:8px;height:8px;border-radius:50%;flex:0 0 auto;
-    background:radial-gradient(circle at 35% 32%, #9dffb4, #17a53a 62%, #0a5b21);
-    box-shadow:0 0 5px rgba(40,230,90,.65), inset 0 0 2px rgba(0,0,0,.5), 0 0 0 1px rgba(0,0,0,.28);
-    opacity:.5;transition:opacity .3s, box-shadow .3s;
-  }
-  .crt-led.on{opacity:1;box-shadow:0 0 9px rgba(60,255,120,.9), 0 0 18px rgba(40,230,90,.45), inset 0 0 2px rgba(0,0,0,.5), 0 0 0 1px rgba(0,0,0,.28);}
   body[data-skin="retro"] #app,
   body[data-skin="retro"] #aura,
   body[data-skin="retro"] #figure-wrap,
@@ -868,8 +832,8 @@
 
   /* ---- beveled window ---- */
   .rwin{
-    position:absolute;left:50%;top:52%;translate:-50% -50%;
-    width:min(348px, calc(100vw - 46px));background:#c0c0c0;padding:3px;
+    position:absolute;left:50%;top:42%;translate:-50% -50%;
+    width:min(348px, calc(100vw - 26px));background:#c0c0c0;padding:3px;
     box-shadow:inset -1px -1px #000, inset 1px 1px #dfdfdf, inset -2px -2px #808080, inset 2px 2px #fff, 4px 4px 0 rgba(0,0,0,.35);
   }
   .rwin.min{display:none;}
@@ -939,13 +903,15 @@
   .rwin-stat2{flex:0 0 auto;}
 
   /* ---- folder window (Playlists) ---- */
-  .rfolder{width:min(360px, calc(100vw - 42px));top:50%;left:54%;}
+  /* browsing windows sit low, leaving the player's title bar peeking above */
+  .rfolder{width:min(360px, calc(100vw - 22px));top:66%;left:51%;}
+  .rtracks{width:min(366px, calc(100vw - 18px));top:66%;left:53%;}
   .rwin-folder-ic{position:relative;display:inline-block;width:15px;height:12px;flex:0 0 auto;
     background:linear-gradient(#ffcf46,#ffdf72);box-shadow:0 0 0 1px #7a5c00;border-radius:0 2px 2px 2px;margin-top:2px;}
   .rwin-folder-ic::before{content:"";position:absolute;left:0;top:-3px;width:7px;height:3px;
     background:#ffcf46;box-shadow:0 0 0 1px #7a5c00;border-radius:2px 2px 0 0;}
   .rfolder-body{
-    background:#fff;margin:6px;min-height:150px;max-height:44vh;overflow-y:auto;padding:3px;
+    background:#fff;margin:6px;min-height:150px;max-height:min(34vh, 300px);overflow-y:auto;padding:3px;
     box-shadow:inset 1px 1px #808080, inset -1px -1px #fff, inset 2px 2px #000;
   }
   .rfolder-note{padding:16px 10px;color:#555;font-size:12px;text-align:center;}
@@ -953,22 +919,43 @@
   .rfolder-item{
     display:flex;align-items:center;gap:8px;padding:4px 6px;cursor:pointer;font-size:12px;color:#000;
     border:1px dotted transparent;
+    /* buttons shrink-wrap and centre their text — file rows must do neither */
+    width:100%;text-align:left;font-family:inherit;background:none;
   }
   .rfolder-item:hover, .rfolder-item.playing{background:#000080;color:#fff;border-color:#000080;}
   .rfolder-item .fi{width:20px;height:20px;flex:0 0 auto;object-fit:cover;image-rendering:pixelated;background:#2b8a8a;box-shadow:0 0 0 1px #7a7d88;}
   .rfolder-item .fi-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .rfolder-item .fi-sub{flex:0 0 auto;font-size:10px;color:#777;}
   .rfolder-item:hover .fi-sub, .rfolder-item.playing .fi-sub{color:#c8d0ff;}
+  /* track rows: a numbered file list, name over artist, duration on the right */
+  .rfolder-item .fi-num{
+    flex:0 0 auto;width:17px;text-align:right;font:10px/1 'JetBrains Mono',monospace;color:#888;
+  }
+  .rfolder-item:hover .fi-num, .rfolder-item.playing .fi-num{color:#b9c4ff;}
+  .rfolder-item .fi-two{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+  .rfolder-item .fi-two b{font-weight:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .rfolder-item .fi-two i{font-style:normal;font-size:10px;color:#777;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .rfolder-item:hover .fi-two i, .rfolder-item.playing .fi-two i{color:#c8d0ff;}
+  .rfolder-item .fi-dur{flex:0 0 auto;font:10px/1 'JetBrains Mono',monospace;color:#777;}
+  .rfolder-item:hover .fi-dur, .rfolder-item.playing .fi-dur{color:#c8d0ff;}
+  /* the "play the whole thing" row at the top of a track list */
+  .rfolder-item.fi-all{border-bottom:1px solid #d0d0d0;margin-bottom:2px;font-weight:bold;}
+  .rfolder-item.fi-all .fi-glyph{
+    width:20px;height:20px;flex:0 0 auto;display:grid;place-items:center;font-size:10px;
+    background:#008080;color:#fff;box-shadow:0 0 0 1px #7a7d88;
+  }
+  /* status-bar "back to Playlists" link */
+  #rtracks-back{cursor:pointer;}
+  #rtracks-back:hover{background:#000080;color:#fff;}
   /* chunky Win95 scrollbar */
   .rfolder-body::-webkit-scrollbar{width:16px;height:16px;}
   .rfolder-body::-webkit-scrollbar-track{background:#dfdfdf;}
   .rfolder-body::-webkit-scrollbar-thumb{background:#c0c0c0;box-shadow:inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;}
 
   /* ---- taskbar ---- */
-  /* the chin already carries the safe-area inset, so the bar itself is 30px */
   .taskbar{
-    position:absolute;left:0;right:0;bottom:0;height:30px;z-index:50;
-    display:flex;align-items:flex-start;gap:4px;padding:3px 4px 0 3px;
+    position:absolute;left:0;right:0;bottom:0;height:calc(30px + var(--safe-b));z-index:50;
+    display:flex;align-items:flex-start;gap:4px;padding:3px 4px var(--safe-b) 3px;
     background:#c0c0c0;box-shadow:inset 0 1px #fff, inset 0 2px #dfdfdf;
   }
   .tb-start{
@@ -993,7 +980,7 @@
 
   /* ---- start menu ---- */
   .rstart{
-    position:absolute;left:4px;bottom:30px;z-index:55;display:none;
+    position:absolute;left:4px;bottom:calc(30px + var(--safe-b));z-index:55;display:none;
     background:#c0c0c0;padding:3px;width:210px;transform-origin:left bottom;
     box-shadow:inset -1px -1px #000, inset 1px 1px #dfdfdf, inset -2px -2px #808080, inset 2px 2px #fff, 3px 3px 0 rgba(0,0,0,.35);
   }
@@ -1246,6 +1233,21 @@
     <div class="rwin-status"><span class="rwin-stat" id="rfolder-count">0 object(s)</span><span class="rwin-stat rwin-stat2">Playlists</span></div>
   </div>
 
+  <div class="rwin rfolder rtracks min" id="rtracks">
+    <div class="rwin-titlebar">
+      <span class="rwin-ticon rwin-folder-ic"></span>
+      <span class="rwin-tname" id="rtracks-name">Playlist</span>
+      <span class="rwin-tbtns">
+        <button class="rwin-b" id="rtracks-min" type="button" aria-label="Minimize">_</button>
+        <button class="rwin-b" id="rtracks-max" type="button" aria-label="Maximize">▢</button>
+        <button class="rwin-b" id="rtracks-close" type="button" aria-label="Close">×</button>
+      </span>
+    </div>
+    <div class="rwin-menu"><span><u>F</u>ile</span><span><u>E</u>dit</span><span><u>V</u>iew</span><span><u>H</u>elp</span></div>
+    <div class="rfolder-body" id="rtracks-body"><div class="rfolder-note">Opening…</div></div>
+    <div class="rwin-status"><span class="rwin-stat" id="rtracks-count">0 object(s)</span><span class="rwin-stat rwin-stat2" id="rtracks-back">◄ Playlists</span></div>
+  </div>
+
   <div class="taskbar">
     <button class="tb-start" id="tb-start" type="button"><span class="tb-logo"></span>Start</button>
     <button class="tb-task" id="tb-task" type="button"><span class="rwin-ticon">♪</span>&nbsp;Nocturne</button>
@@ -1269,14 +1271,6 @@
    <div class="crt-roll"></div>
    <div class="crt-glass"></div>
   </div><!-- /crt-screen -->
-
-  <!-- monitor chin: brand badge, model plate, power lamp -->
-  <div class="crt-chin">
-    <span class="crt-badge">NOCTURNE</span>
-    <span class="crt-vents"></span>
-    <span class="crt-model">CRT&#8209;95</span>
-    <span class="crt-led" id="crt-led"></span>
-  </div>
  </div><!-- /crt -->
 </div>
 
@@ -3381,18 +3375,109 @@ document.querySelectorAll('.skin-card').forEach(card => {
       const sub = document.createElement('span');
       sub.className = 'fi-sub'; sub.textContent = count + (count === 1 ? ' track' : ' tracks');
       row.append(img, name, sub);
-      row.onclick = async () => {
-        const r = await control('/me/player/play', { method:'PUT', body: JSON.stringify({ context_uri: pl.uri }) });
-        if(!r.ok){ toast(r.msg); return; }
-        st.pos = 0;
+      // opening a playlist opens its own window, like double-clicking a folder
+      row.onclick = () => {
         body.querySelectorAll('.rfolder-item.playing').forEach(n => n.classList.remove('playing'));
         row.classList.add('playing');
-        showWin();                                       // pop the player up so you see it play
-        setTimeout(poll, 600);
+        openTracks(pl);
       };
       body.appendChild(row);
     });
     $('rfolder-count').textContent = PLAYLISTS.length + ' object(s)';
+  }
+
+  /* ---- track window: the songs inside one playlist ---- */
+  const tracksWin = $('rtracks');
+  makeDraggable(tracksWin);
+  $('rtracks-close').onclick = () => closeWin(tracksWin);
+  $('rtracks-min').onclick   = () => closeWin(tracksWin);
+  $('rtracks-max').onclick   = () => openWin(tracksWin);
+  $('rtracks-back').onclick  = () => { closeWin(tracksWin); showFolder(); };
+
+  const trackCache = new Map();                          // playlist uri -> tracks, fetched once
+  let tracksToken = 0;                                   // ignore replies from a window you left
+
+  async function openTracks(pl){
+    const body = $('rtracks-body'), token = ++tracksToken;
+    $('rtracks-name').textContent = pl.name || 'Playlist';
+    $('rtracks-count').textContent = 'Reading…';
+    openWin(tracksWin);
+
+    let tracks = trackCache.get(pl.uri);
+    if(!tracks){
+      body.innerHTML = '<div class="rfolder-note">Reading disk…</div>';
+      tracks = await fetchTracks(pl);
+      if(token !== tracksToken) return;                  // a different playlist was opened meanwhile
+      if(tracks === null){
+        body.innerHTML = '<div class="rfolder-note bad">Could not read this playlist</div>';
+        $('rtracks-count').textContent = '0 object(s)';
+        return;
+      }
+      trackCache.set(pl.uri, tracks);
+    }
+    renderTracks(pl, tracks);
+  }
+
+  // up to 200 tracks — plenty for a folder view, and it keeps the wait short
+  async function fetchTracks(pl){
+    const id = pl.id || (pl.uri || '').split(':').pop();
+    if(!id) return null;
+    const out = [];
+    let url = '/playlists/' + id + '/tracks?limit=100&fields=next,items(track(uri,name,duration_ms,artists(name)))';
+    for(let p = 0; p < 2 && url; p++){
+      const r = await api(url);
+      if(!r.ok) return out.length ? out : null;
+      ((r.data && r.data.items) || []).forEach(it => { if(it && it.track && it.track.uri) out.push(it.track); });
+      url = (r.data && r.data.next) || null;
+    }
+    return out;
+  }
+
+  function renderTracks(pl, tracks){
+    const body = $('rtracks-body');
+    body.innerHTML = '';
+    if(!tracks.length){
+      body.innerHTML = '<div class="rfolder-note">This playlist is empty</div>';
+      $('rtracks-count').textContent = '0 object(s)';
+      return;
+    }
+
+    const mark = row => {
+      body.querySelectorAll('.rfolder-item.playing').forEach(n => n.classList.remove('playing'));
+      if(row) row.classList.add('playing');
+    };
+    const play = async (row, bodyObj) => {
+      const r = await control('/me/player/play', { method:'PUT', body: JSON.stringify(bodyObj) });
+      if(!r.ok){ toast(r.msg); return; }
+      st.pos = 0; mark(row);
+      showWin();                                         // bring the player back if it was closed…
+      focusWin(tracksWin);                               // …but keep the list on top so you can keep picking
+      setTimeout(poll, 600);
+    };
+
+    // "play the whole playlist" sits at the top of the list
+    const all = document.createElement('button');
+    all.className = 'rfolder-item fi-all'; all.type = 'button';
+    all.innerHTML = '<span class="fi-glyph">►</span><span class="fi-name">Play all</span>' +
+                    '<span class="fi-sub">' + tracks.length + '</span>';
+    all.onclick = () => play(null, { context_uri: pl.uri });
+    body.appendChild(all);
+
+    tracks.forEach((t, i) => {
+      const row = document.createElement('button');
+      row.className = 'rfolder-item'; row.type = 'button';
+      const artists = (t.artists || []).map(a => a.name).filter(Boolean).join(', ');
+      row.innerHTML =
+        '<span class="fi-num">' + (i + 1) + '</span>' +
+        '<span class="fi-two"><b>' + esc(t.name || 'Untitled') + '</b><i>' + esc(artists) + '</i></span>' +
+        '<span class="fi-dur">' + fmt(t.duration_ms || 0) + '</span>';
+      // play the track in the context of its playlist, so next/prev keep working
+      row.onclick = () => play(row, { context_uri: pl.uri, offset: { uri: t.uri } });
+      body.appendChild(row);
+    });
+
+    $('rtracks-count').textContent = tracks.length + ' object(s)';
+    body.scrollTop = 0;
   }
 
   // Start menu
@@ -3438,7 +3523,6 @@ document.querySelectorAll('.skin-card').forEach(card => {
     $('r-tnow').textContent = $('t-now').textContent;
     $('r-tend').textContent = $('t-end').textContent;
     $('r-status').textContent = !st.id ? 'Ready' : (st.playing ? 'Playing' : 'Paused');
-    $('crt-led').classList.toggle('on', !!st.playing);      // power lamp burns bright while playing
   };
 
   // CRT power-on — replayed every time you switch into the retro skin
