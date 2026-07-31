@@ -742,14 +742,104 @@
      ========================================================================= */
   #retro{
     position:fixed;inset:0;z-index:6;display:none;overflow:hidden;
-    background:#0b8a8a;
+    /* the dark room the monitor sits in */
+    background:radial-gradient(120% 80% at 50% 8%, #23242b 0%, #131319 45%, #08080b 100%);
     font-family:'Tahoma','MS Sans Serif',Geneva,Verdana,sans-serif;
     font-size:12px;color:#000;letter-spacing:0;
-    padding:calc(var(--safe-t) + 8px) 8px 8px;
     -webkit-font-smoothing:none;user-select:none;-webkit-user-select:none;
   }
   body[data-skin="retro"] #retro{display:block;}
-  body[data-skin="retro"]{background:#0b8a8a;}
+  body[data-skin="retro"]{background:#08080b;}
+
+  /* ---- the monitor casing (beige plastic, bevelled, chin at the bottom) ---- */
+  .crt{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    padding:max(var(--safe-t), 20px) 17px 0;
+    background:
+      repeating-linear-gradient(0deg, rgba(0,0,0,.03) 0 1px, transparent 1px 3px),
+      radial-gradient(140% 70% at 50% -10%, rgba(255,255,255,.5), transparent 55%),
+      linear-gradient(168deg,#efe8d6 0%,#ded6c1 30%,#cdc4ac 66%,#b3aa94 100%);
+    box-shadow:
+      inset 0 3px 0 rgba(255,255,255,.8), inset 4px 0 0 rgba(255,255,255,.32),
+      inset -4px 0 0 rgba(0,0,0,.17), inset 0 -3px 0 rgba(0,0,0,.24);
+  }
+  /* the tube itself: recessed behind a dark rim, corners rounded like glass */
+  .crt-screen{
+    position:relative;flex:1;min-height:0;overflow:hidden;
+    border-radius:20px/26px;background:#02100f;   /* dead tube behind the picture */
+    box-shadow:
+      0 0 0 3px #34322b, 0 0 0 6px #6b6654, 0 0 0 7px rgba(255,255,255,.45),
+      0 8px 18px rgba(0,0,0,.55);
+  }
+  /* the desktop surface inside the tube */
+  .crt-desk{
+    position:absolute;inset:0;padding:8px;
+    background:
+      radial-gradient(118% 92% at 50% 44%, #0d9a96 0%, #008787 52%, #00706f 84%, #005c5c 100%);
+  }
+
+  /* --- tube glass overlays (all pointer-transparent, GPU-cheap) --- */
+  .crt-scan, .crt-roll, .crt-glass{position:absolute;inset:0;pointer-events:none;}
+  .crt-scan{
+    z-index:60;
+    background:
+      repeating-linear-gradient(0deg, rgba(0,0,0,.16) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(90deg, rgba(255,0,80,.05) 0 1px, rgba(0,255,170,.04) 1px 2px, rgba(60,90,255,.05) 2px 3px);
+    animation:crtFlicker 5.5s steps(1) infinite;
+  }
+  @keyframes crtFlicker{
+    0%,96%,100%{opacity:.72;} 96.5%{opacity:.62;} 97.5%{opacity:.8;} 98.5%{opacity:.66;}
+  }
+  /* the slow bright band that rolls up an out-of-sync tube */
+  .crt-roll{
+    z-index:61;height:36%;top:-36%;
+    background:linear-gradient(180deg, transparent, rgba(255,255,255,.055) 45%, rgba(255,255,255,.075) 55%, transparent);
+    animation:crtRoll 7.5s linear infinite;
+  }
+  @keyframes crtRoll{ from{transform:translateY(0);} to{transform:translateY(285%);} }
+  /* vignette + curved glass glare */
+  .crt-glass{
+    z-index:62;border-radius:20px/26px;
+    background:
+      linear-gradient(114deg, rgba(255,255,255,.16) 0%, rgba(255,255,255,.06) 15%, transparent 32%),
+      radial-gradient(72% 58% at 50% 42%, transparent 46%, rgba(0,0,0,.34) 82%, rgba(0,0,0,.62) 100%);
+    box-shadow:inset 0 0 30px rgba(0,0,0,.5), inset 0 0 4px rgba(0,0,0,.75);
+  }
+
+  /* --- CRT power-on: the tube snaps open from a hot horizontal line --- */
+  .crt.boot .crt-desk{animation:crtOn .62s cubic-bezier(.2,.85,.25,1) both;}
+  @keyframes crtOn{
+    0%  {transform:scale(1.25,.004);filter:brightness(4) saturate(0);opacity:.9;}
+    26% {transform:scale(1.18,.008);filter:brightness(3.6) saturate(.15);opacity:1;}
+    52% {transform:scale(1,.42);filter:brightness(2.1) saturate(.65);}
+    78% {transform:scale(1,1);filter:brightness(1.35) saturate(.95);}
+    100%{transform:none;filter:none;}
+  }
+  .crt.boot .crt-glass{animation:crtFlash .62s ease-out both;}
+  @keyframes crtFlash{ 0%{opacity:.15;} 22%{opacity:.25;} 100%{opacity:1;} }
+
+  /* --- monitor chin --- */
+  .crt-chin{
+    flex:0 0 auto;display:flex;align-items:center;gap:9px;
+    height:calc(32px + max(var(--safe-b), 4px));padding:0 3px max(var(--safe-b), 4px);
+  }
+  .crt-badge{
+    font:bold 10px/1 'Tahoma',sans-serif;letter-spacing:.22em;color:#6c6553;
+    text-shadow:0 1px 0 rgba(255,255,255,.75);
+  }
+  .crt-vents{
+    flex:1;height:7px;border-radius:4px;
+    background:repeating-linear-gradient(90deg, rgba(0,0,0,.16) 0 2px, rgba(255,255,255,.45) 2px 4px);
+    opacity:.5;
+  }
+  .crt-model{font:9px/1 'Tahoma',sans-serif;letter-spacing:.1em;color:#8b8471;text-shadow:0 1px 0 rgba(255,255,255,.6);}
+  .crt-led{
+    width:8px;height:8px;border-radius:50%;flex:0 0 auto;
+    background:radial-gradient(circle at 35% 32%, #9dffb4, #17a53a 62%, #0a5b21);
+    box-shadow:0 0 5px rgba(40,230,90,.65), inset 0 0 2px rgba(0,0,0,.5), 0 0 0 1px rgba(0,0,0,.28);
+    opacity:.5;transition:opacity .3s, box-shadow .3s;
+  }
+  .crt-led.on{opacity:1;box-shadow:0 0 9px rgba(60,255,120,.9), 0 0 18px rgba(40,230,90,.45), inset 0 0 2px rgba(0,0,0,.5), 0 0 0 1px rgba(0,0,0,.28);}
   body[data-skin="retro"] #app,
   body[data-skin="retro"] #aura,
   body[data-skin="retro"] #figure-wrap,
@@ -758,13 +848,6 @@
   body[data-skin="retro"] #bloom,
   body[data-skin="retro"] #grain,
   body[data-skin="retro"] #cursor-glow{display:none !important;}
-
-  /* faint CRT scanlines over the whole desktop */
-  #retro::after{
-    content:"";position:absolute;inset:0;z-index:60;pointer-events:none;
-    background:repeating-linear-gradient(0deg, rgba(0,0,0,.07) 0 1px, transparent 1px 3px);
-    opacity:.5;
-  }
 
   /* ---- desktop shortcut icons ---- */
   .rd-icons{
@@ -785,15 +868,31 @@
 
   /* ---- beveled window ---- */
   .rwin{
-    position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);
-    width:min(348px, calc(100vw - 26px));background:#c0c0c0;padding:3px;
+    position:absolute;left:50%;top:52%;translate:-50% -50%;
+    width:min(348px, calc(100vw - 46px));background:#c0c0c0;padding:3px;
     box-shadow:inset -1px -1px #000, inset 1px 1px #dfdfdf, inset -2px -2px #808080, inset 2px 2px #fff, 4px 4px 0 rgba(0,0,0,.35);
   }
   .rwin.min{display:none;}
-  /* window opening animation — zooms + fades from centre (scale composes with
-     the window's translate/left-top positioning, dragged or not) */
-  .rwin.opening{animation:winOpen .18s cubic-bezier(.2,.85,.3,1);}
-  @keyframes winOpen{from{opacity:.2;scale:.8;}to{opacity:1;scale:1;}}
+  .rwin{z-index:20;}
+  .rwin.focused{z-index:30;}
+  /* Win95 marked the window you weren't using with a dull grey title bar */
+  .rwin:not(.focused) .rwin-titlebar{background:linear-gradient(90deg,#7b7b7b,#adadad);color:#e6e6e6;}
+  .rwin:not(.focused) .rwin-tname{text-shadow:none;}
+  /* Open/close animations. Centring lives in `translate:` so `transform:` is
+     free for the animation — the two compose without the window drifting, and
+     it works the same whether the window is centred or has been dragged. */
+  .rwin.opening, .rwin.closing{will-change:transform, opacity;}
+  .rwin.opening{animation:winOpen .3s cubic-bezier(.16,1,.3,1) both;}
+  @keyframes winOpen{
+    0%  {opacity:0;transform:scale(.84) translateY(14px);}
+    45% {opacity:1;}
+    100%{opacity:1;transform:scale(1) translateY(0);}
+  }
+  .rwin.closing{animation:winClose .22s cubic-bezier(.4,0,.75,.2) both;}
+  @keyframes winClose{
+    0%  {opacity:1;transform:scale(1) translateY(0);}
+    100%{opacity:0;transform:scale(.88) translateY(10px);}
+  }
   .rwin-titlebar{
     display:flex;align-items:center;gap:5px;height:20px;padding:0 2px 0 4px;
     background:linear-gradient(90deg,#000082,#1a86d4);color:#fff;
@@ -840,7 +939,7 @@
   .rwin-stat2{flex:0 0 auto;}
 
   /* ---- folder window (Playlists) ---- */
-  .rfolder{width:min(360px, calc(100vw - 22px));top:40%;}
+  .rfolder{width:min(360px, calc(100vw - 42px));top:50%;left:54%;}
   .rwin-folder-ic{position:relative;display:inline-block;width:15px;height:12px;flex:0 0 auto;
     background:linear-gradient(#ffcf46,#ffdf72);box-shadow:0 0 0 1px #7a5c00;border-radius:0 2px 2px 2px;margin-top:2px;}
   .rwin-folder-ic::before{content:"";position:absolute;left:0;top:-3px;width:7px;height:3px;
@@ -866,9 +965,10 @@
   .rfolder-body::-webkit-scrollbar-thumb{background:#c0c0c0;box-shadow:inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;}
 
   /* ---- taskbar ---- */
+  /* the chin already carries the safe-area inset, so the bar itself is 30px */
   .taskbar{
-    position:absolute;left:0;right:0;bottom:0;height:calc(30px + var(--safe-b));z-index:50;
-    display:flex;align-items:flex-start;gap:4px;padding:3px 4px calc(var(--safe-b)) 3px;
+    position:absolute;left:0;right:0;bottom:0;height:30px;z-index:50;
+    display:flex;align-items:flex-start;gap:4px;padding:3px 4px 0 3px;
     background:#c0c0c0;box-shadow:inset 0 1px #fff, inset 0 2px #dfdfdf;
   }
   .tb-start{
@@ -893,12 +993,14 @@
 
   /* ---- start menu ---- */
   .rstart{
-    position:absolute;left:4px;bottom:calc(30px + var(--safe-b));z-index:55;display:none;
-    background:#c0c0c0;padding:3px;width:210px;
+    position:absolute;left:4px;bottom:30px;z-index:55;display:none;
+    background:#c0c0c0;padding:3px;width:210px;transform-origin:left bottom;
     box-shadow:inset -1px -1px #000, inset 1px 1px #dfdfdf, inset -2px -2px #808080, inset 2px 2px #fff, 3px 3px 0 rgba(0,0,0,.35);
   }
-  .rstart.open{display:flex;animation:startOpen .13s ease-out;transform-origin:left bottom;}
-  @keyframes startOpen{from{opacity:.3;transform:translateY(10px) scale(.94);}to{opacity:1;transform:none;}}
+  .rstart.open{display:flex;animation:startOpen .22s cubic-bezier(.16,1,.3,1) both;}
+  @keyframes startOpen{from{opacity:0;transform:translateY(14px) scale(.9);}to{opacity:1;transform:none;}}
+  .rstart.closing{display:flex;animation:startClose .16s ease-in both;}
+  @keyframes startClose{from{opacity:1;transform:none;}to{opacity:0;transform:translateY(10px) scale(.94);}}
   .rstart-side{
     width:22px;flex:0 0 auto;writing-mode:vertical-rl;transform:rotate(180deg);
     text-align:center;font-weight:bold;font-size:15px;color:#fff;padding:8px 3px;
@@ -913,7 +1015,12 @@
   .rstart-i{width:16px;text-align:center;}
   .rstart-sep{height:2px;margin:3px 2px;box-shadow:inset 0 1px #808080, inset 0 -1px #fff;}
 
-  @media (prefers-reduced-motion: reduce){ #retro::after{display:none;} }
+  @media (prefers-reduced-motion: reduce){
+    .crt-scan{animation:none;opacity:.5;}
+    .crt-roll{display:none;}
+    .crt.boot .crt-desk, .crt.boot .crt-glass{animation:none;}
+    .rwin.opening, .rwin.closing, .rstart.open, .rstart.closing{animation-duration:.01ms;}
+  }
 
   /* =========================================================================
      SKINS PICKER — selectable cards in a sheet
@@ -1075,6 +1182,9 @@
 
 <!-- ============ RETRO 95 SKIN ============ -->
 <div id="retro" aria-hidden="true">
+ <div class="crt" id="crt">
+  <div class="crt-screen">
+   <div class="crt-desk" id="rdesk">
   <div class="rd-icons">
     <a class="rd-icon" href="https://www.minecraft.net" target="_blank" rel="noopener">
       <svg class="ico" viewBox="0 0 32 32"><rect width="32" height="32" fill="#7c5a3a"/><rect width="32" height="12" fill="#61b23a"/><rect y="10" width="32" height="3" fill="#3f8f22"/><rect x="3" y="3" width="4" height="4" fill="#83cf52"/><rect x="13" y="2" width="5" height="4" fill="#83cf52"/><rect x="24" y="4" width="4" height="3" fill="#83cf52"/><rect x="6" y="17" width="5" height="5" fill="#6b4a2c"/><rect x="19" y="20" width="5" height="5" fill="#6b4a2c"/><rect x="12" y="25" width="4" height="4" fill="#8a6640"/><rect x="24" y="15" width="4" height="4" fill="#8a6640"/></svg>
@@ -1152,6 +1262,22 @@
       <button class="rstart-item" id="rs-exit" type="button"><span class="rstart-i">⏻</span> Log off Nocturne…</button>
     </div>
   </div>
+   </div><!-- /crt-desk -->
+
+   <!-- tube glass: scanlines, phosphor bloom, vignette, glare, rolling band -->
+   <div class="crt-scan"></div>
+   <div class="crt-roll"></div>
+   <div class="crt-glass"></div>
+  </div><!-- /crt-screen -->
+
+  <!-- monitor chin: brand badge, model plate, power lamp -->
+  <div class="crt-chin">
+    <span class="crt-badge">NOCTURNE</span>
+    <span class="crt-vents"></span>
+    <span class="crt-model">CRT&#8209;95</span>
+    <span class="crt-led" id="crt-led"></span>
+  </div>
+ </div><!-- /crt -->
 </div>
 
 <!-- ============ SHEETS ============ -->
@@ -3091,7 +3217,10 @@ function applyLook(){
   const s = getSkin();
   document.body.dataset.skin = s;
   markSkinCards();
-  if(s === 'retro'){ retroSync(); if(window.retroShowWin) window.retroShowWin(); }
+  if(s === 'retro'){
+    if(window.retroBoot) window.retroBoot();            // CRT power-on
+    retroSync(); if(window.retroShowWin) window.retroShowWin();
+  }
   else { setTimeout(() => { try{ AU.resize(); }catch(e){} }, 20); }
 }
 function setSkin(s){
@@ -3138,29 +3267,56 @@ document.querySelectorAll('.skin-card').forEach(card => {
   // the retro desktop); reopen from the taskbar button or the Media Player
   // icon. Switching back to Aura is done from the Start menu, never by closing.
   const win = $('rwin'), taskBtn = $('tb-task');
-  function showWin(){
-    win.classList.remove('min'); taskBtn.classList.add('active');
-    win.classList.remove('opening'); void win.offsetWidth; win.classList.add('opening');   // replay open anim
+
+  // open/close with animation — `closing` runs the shrink, then the window is
+  // actually hidden. Re-opening mid-close cancels it cleanly.
+  function openWin(wn){
+    wn.classList.remove('closing', 'opening');
+    wn.classList.remove('min');
+    void wn.offsetWidth;                                 // restart the animation
+    wn.classList.add('opening');
+    focusWin(wn);
   }
-  function hideWin(){ win.classList.add('min'); taskBtn.classList.remove('active'); }
+  // only one window wears the blue title bar at a time
+  function focusWin(wn){
+    document.querySelectorAll('#rdesk .rwin').forEach(w => w.classList.toggle('focused', w === wn));
+  }
+  function closeWin(wn){
+    if(wn.classList.contains('min') || wn.classList.contains('closing')) return;
+    wn.classList.remove('opening');
+    void wn.offsetWidth;
+    wn.classList.add('closing');
+    const done = () => {
+      wn.removeEventListener('animationend', done);
+      if(wn.classList.contains('closing')){ wn.classList.remove('closing'); wn.classList.add('min'); }
+    };
+    wn.addEventListener('animationend', done);
+    setTimeout(done, 320);                               // safety net if the anim is skipped
+  }
+
+  function showWin(){ openWin(win); taskBtn.classList.add('active'); }
+  function hideWin(){ closeWin(win); taskBtn.classList.remove('active'); }
   window.retroShowWin = showWin;
   $('rwin-close').onclick = hideWin;
   $('rwin-min').onclick   = hideWin;
   $('rwin-max').onclick   = showWin;
-  taskBtn.onclick = () => { win.classList.contains('min') ? showWin() : hideWin(); };
+  taskBtn.onclick = () => { (win.classList.contains('min') || win.classList.contains('closing')) ? showWin() : hideWin(); };
   taskBtn.classList.add('active');
 
   // ---- drag any window by its title bar (reused by the player + folders) ----
   function makeDraggable(wn){
     const title = wn.querySelector('.rwin-titlebar');
     if(!title) return;
-    let dragging = false, offX = 0, offY = 0;
+    wn.addEventListener('pointerdown', () => focusWin(wn));    // click anywhere to bring it forward
+    let dragging = false, offX = 0, offY = 0, box = null;
     title.addEventListener('pointerdown', e => {
       if(e.target.closest('.rwin-tbtns')) return;       // don't drag when hitting the buttons
       const r = wn.getBoundingClientRect();
-      wn.style.transform = 'none';                      // pin to top-left, drop the centring
-      wn.style.left = r.left + 'px';
-      wn.style.top  = r.top + 'px';
+      // left/top are relative to the desktop inside the tube, not the viewport
+      box = (wn.offsetParent || document.body).getBoundingClientRect();
+      wn.style.translate = 'none';                      // pin to top-left, drop the centring
+      wn.style.left = (r.left - box.left) + 'px';
+      wn.style.top  = (r.top  - box.top ) + 'px';
       offX = e.clientX - r.left; offY = e.clientY - r.top;
       dragging = true;
       try{ title.setPointerCapture(e.pointerId); }catch(_){}
@@ -3168,10 +3324,10 @@ document.querySelectorAll('.skin-card').forEach(card => {
     });
     title.addEventListener('pointermove', e => {
       if(!dragging) return;
-      const wd = wn.offsetWidth, tb = 42;
-      let nx = e.clientX - offX, ny = e.clientY - offY;
-      nx = Math.max(28 - wd, Math.min(nx, innerWidth - 40));    // keep a corner grabbable
-      ny = Math.max(6, Math.min(ny, innerHeight - tb));
+      const wd = wn.offsetWidth, tb = 40;
+      let nx = e.clientX - offX - box.left, ny = e.clientY - offY - box.top;
+      nx = Math.max(26 - wd, Math.min(nx, box.width - 38));      // keep a corner grabbable
+      ny = Math.max(2, Math.min(ny, box.height - tb));
       wn.style.left = nx + 'px';
       wn.style.top  = ny + 'px';
     });
@@ -3184,12 +3340,8 @@ document.querySelectorAll('.skin-card').forEach(card => {
   // ---- Playlists folder window ----
   const folder = $('rfolder');
   makeDraggable(folder);
-  function showFolder(){
-    folder.classList.remove('min');
-    folder.classList.remove('opening'); void folder.offsetWidth; folder.classList.add('opening');  // replay open anim
-    loadRetroPlaylists();
-  }
-  function hideFolder(){ folder.classList.add('min'); }
+  function showFolder(){ openWin(folder); loadRetroPlaylists(); }
+  function hideFolder(){ closeWin(folder); }
   $('rfolder-close').onclick = hideFolder;
   $('rfolder-min').onclick   = hideFolder;
   $('rfolder-max').onclick   = showFolder;
@@ -3245,8 +3397,19 @@ document.querySelectorAll('.skin-card').forEach(card => {
 
   // Start menu
   const start = $('rstart'), startBtn = $('tb-start');
-  function closeStart(){ start.classList.remove('open'); startBtn.classList.remove('on'); }
-  startBtn.onclick = e => { e.stopPropagation(); start.classList.toggle('open'); startBtn.classList.toggle('on', start.classList.contains('open')); };
+  function closeStart(){
+    if(!start.classList.contains('open')) return;
+    start.classList.remove('open'); startBtn.classList.remove('on');
+    start.classList.add('closing');
+    const done = () => { start.removeEventListener('animationend', done); start.classList.remove('closing'); };
+    start.addEventListener('animationend', done);
+    setTimeout(done, 240);
+  }
+  startBtn.onclick = e => {
+    e.stopPropagation();
+    if(start.classList.contains('open')){ closeStart(); return; }
+    start.classList.remove('closing'); start.classList.add('open'); startBtn.classList.add('on');
+  };
   document.addEventListener('pointerdown', e => { if(start.classList.contains('open') && !start.contains(e.target) && e.target !== startBtn && !startBtn.contains(e.target)) closeStart(); });
   $('rs-aura').onclick = () => { closeStart(); setSkin('aura'); };
   $('rs-exit').onclick = () => { closeStart(); $('btn-logout').click(); };
@@ -3275,6 +3438,14 @@ document.querySelectorAll('.skin-card').forEach(card => {
     $('r-tnow').textContent = $('t-now').textContent;
     $('r-tend').textContent = $('t-end').textContent;
     $('r-status').textContent = !st.id ? 'Ready' : (st.playing ? 'Playing' : 'Paused');
+    $('crt-led').classList.toggle('on', !!st.playing);      // power lamp burns bright while playing
+  };
+
+  // CRT power-on — replayed every time you switch into the retro skin
+  const crt = $('crt');
+  window.retroBoot = function(){
+    crt.classList.remove('boot'); void crt.offsetWidth; crt.classList.add('boot');
+    setTimeout(() => crt.classList.remove('boot'), 700);
   };
 })();
 function retroSync(){ if(window.retroSync) window.retroSync(); }
