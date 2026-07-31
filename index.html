@@ -1351,6 +1351,10 @@ const S = {
   set tok(v){ localStorage.setItem('nc_tok', v); },
   get ref(){ return localStorage.getItem('nc_ref'); },
   set ref(v){ localStorage.setItem('nc_ref', v); },
+  // what Spotify actually granted — a refresh never widens it, so a token
+  // issued before a scope was added stays without that scope for good
+  get scope(){ return localStorage.getItem('nc_scope') || ''; },
+  set scope(v){ localStorage.setItem('nc_scope', v); },
   get exp(){ return +localStorage.getItem('nc_exp') || 0; },
   set exp(v){ localStorage.setItem('nc_exp', v); },
   get ver(){ return localStorage.getItem('nc_ver'); },
@@ -1393,7 +1397,17 @@ async function exchange(code){
   if(d.error) throw new Error(d.error_description || d.error);
   S.tok = d.access_token;
   if(d.refresh_token) S.ref = d.refresh_token;
+  if(d.scope) S.scope = d.scope;
   S.exp = Date.now() + (d.expires_in - 60) * 1000;
+}
+
+/* Scopes this token is actually allowed to use. An old token can be perfectly
+   valid and still be missing a permission the app has since started needing —
+   which reads as a 403, and only a fresh login can fix it. */
+function missingScopes(){
+  const got = new Set(S.scope.split(' ').filter(Boolean));
+  if(!got.size) return [];                    // nothing recorded — can't judge, don't nag
+  return SCOPES.split(' ').filter(s => !got.has(s));
 }
 
 async function refresh(){
@@ -1411,6 +1425,7 @@ async function refresh(){
   if(d.error) throw new Error(d.error);
   S.tok = d.access_token;
   if(d.refresh_token) S.ref = d.refresh_token;
+  if(d.scope) S.scope = d.scope;
   S.exp = Date.now() + (d.expires_in - 60) * 1000;
 }
 
@@ -3403,31 +3418,59 @@ document.querySelectorAll('.skin-card').forEach(card => {
     renderTracks(pl, tracks);
   }
 
-  // up to 200 tracks — plenty for a folder view, and it keeps the wait short.
-  // No `fields` filter: the full payload is bigger but it never trips on
-  // field-syntax errors, and it copes with either item shape Spotify returns.
+  // Spotify's own words for a failure, not ours — a wrong guess here sends you
+  // hunting the wrong problem. Includes the status so it can be acted on.
+  function apiReason(r){
+    const raw = (r.data && r.data.error && r.data.error.message) || '';
+    if(r.status === 403 && (/scope/i.test(raw) || missingScopes().length))
+      return 'Your login predates the playlist permission — hit Exit, then reconnect (403)';
+    if(r.status === 403) return (raw || 'Forbidden') + ' (403)';
+    if(r.status === 404) return "Spotify won't share this playlist (404)";
+    if(r.status === 401) return 'Login expired — hit Exit and reconnect (401)';
+    return (raw || r.msg || 'Request failed') + (r.status ? ' (' + r.status + ')' : '');
+  }
+
+  // Up to 200 tracks — plenty for a folder view, and it keeps the wait short.
+  // Three request shapes are tried before giving up: the plain track list, one
+  // without the additional_types hint, and finally the playlist object itself,
+  // which carries its first 100 items. Between them one usually gets through.
   async function fetchTracks(pl){
     const id = pl.id || (pl.uri || '').split(':').pop();
     if(!id) return { tracks: [], msg: 'That playlist has no id' };
-    const out = [];
-    let url = '/playlists/' + id + '/tracks?limit=100&additional_types=track', msg = '';
-    for(let p = 0; p < 2 && url; p++){
-      const r = await api(url);
-      if(!r.ok){
-        // 404 here isn't "no device" — Spotify simply won't hand over some
-        // playlists (its own editorial/algorithmic ones) to third-party apps.
-        msg = r.status === 404 ? "Spotify won't share this playlist"
-            : r.status === 403 ? 'Not allowed to read this playlist'
-            : (r.msg || 'Spotify error ' + r.status);
-        break;
+
+    const variants = [
+      { url:'/playlists/' + id + '/tracks?limit=100&additional_types=track', pick: d => d },
+      { url:'/playlists/' + id + '/tracks?limit=100',                        pick: d => d },
+      { url:'/playlists/' + id,                                             pick: d => d && d.tracks },
+    ];
+
+    let first = null, fail = null;
+    for(const v of variants){
+      const r = await api(v.url);
+      if(r.ok){
+        const page = v.pick(r.data);
+        if(page){ first = page; break; }               // keep trying if the reply is unusable
+        if(!fail) fail = { status:0, data:null, msg:'Spotify sent nothing back' };
+      }else if(!fail){
+        fail = r;                                     // the first failure is the telling one
       }
-      ((r.data && r.data.items) || []).forEach(it => {
-        const t = it && (it.track || it);                // items are {track:…}, but be forgiving
-        if(t && t.uri && t.type !== 'episode') out.push(t);
-      });
-      url = (r.data && r.data.next) || null;
+      console.warn('[retro] playlist read failed', v.url, r.status, r.data && r.data.error);
     }
-    return { tracks: out, msg };
+    if(!first) return { tracks: [], msg: fail ? apiReason(fail) : 'Could not read this playlist' };
+
+    const out = [];
+    const take = page => ((page && page.items) || []).forEach(it => {
+      const t = it && (it.track || it);                  // items are {track:…}, but be forgiving
+      if(t && t.uri && t.type !== 'episode') out.push(t);
+    });
+    take(first);
+
+    let url = first.next || null;                        // one more page, then stop
+    if(url){
+      const r = await api(url);
+      if(r.ok) take(r.data);
+    }
+    return { tracks: out, msg: '' };
   }
 
   function renderTracks(pl, tracks){
@@ -3669,7 +3712,7 @@ function enterApp(){
   // brief version stamp so we can confirm the latest file actually loaded
   (function(){
     const v = document.createElement('div');
-    v.textContent = 'build v13';
+    v.textContent = 'build v14';
     v.style.cssText = 'position:fixed;right:8px;top:calc(var(--safe-t) + 4px);z-index:99;'+
       'font:9px monospace;color:#4C7BFF;opacity:.7;pointer-events:none;';
     document.body.appendChild(v);
@@ -3684,6 +3727,11 @@ function enterApp(){
   // warm the index from cache so capture() appends instead of clobbering
   const cached = readCache();
   if(cached){ LIB = cached; libLoaded = true; }
+
+  // an old token can be missing permissions the app now needs — say so once,
+  // because refreshing never grants them and only reconnecting will
+  const stale = missingScopes();
+  if(stale.length) setTimeout(() => toast('Reconnect to grant ' + stale.length + ' new permission' + (stale.length === 1 ? '' : 's')), 2500);
 
   // wake a device on startup so state shows and play works without hand-opening Spotify
   ensureDevice().then(() => poll());
