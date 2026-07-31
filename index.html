@@ -792,18 +792,6 @@
     box-shadow:inset 0 0 30px rgba(0,0,0,.5), inset 0 0 4px rgba(0,0,0,.75);
   }
 
-  /* --- CRT power-on: the tube snaps open from a hot horizontal line --- */
-  .crt.boot .crt-desk{animation:crtOn .62s cubic-bezier(.2,.85,.25,1) both;}
-  @keyframes crtOn{
-    0%  {transform:scale(1.25,.004);filter:brightness(4) saturate(0);opacity:.9;}
-    26% {transform:scale(1.18,.008);filter:brightness(3.6) saturate(.15);opacity:1;}
-    52% {transform:scale(1,.42);filter:brightness(2.1) saturate(.65);}
-    78% {transform:scale(1,1);filter:brightness(1.35) saturate(.95);}
-    100%{transform:none;filter:none;}
-  }
-  .crt.boot .crt-glass{animation:crtFlash .62s ease-out both;}
-  @keyframes crtFlash{ 0%{opacity:.15;} 22%{opacity:.25;} 100%{opacity:1;} }
-
   body[data-skin="retro"] #app,
   body[data-skin="retro"] #aura,
   body[data-skin="retro"] #figure-wrap,
@@ -1005,7 +993,6 @@
   @media (prefers-reduced-motion: reduce){
     .crt-scan{animation:none;opacity:.5;}
     .crt-roll{display:none;}
-    .crt.boot .crt-desk, .crt.boot .crt-glass{animation:none;}
     .rwin.opening, .rwin.closing, .rstart.open, .rstart.closing{animation-duration:.01ms;}
   }
 
@@ -3211,10 +3198,7 @@ function applyLook(){
   const s = getSkin();
   document.body.dataset.skin = s;
   markSkinCards();
-  if(s === 'retro'){
-    if(window.retroBoot) window.retroBoot();            // CRT power-on
-    retroSync(); if(window.retroShowWin) window.retroShowWin();
-  }
+  if(s === 'retro'){ retroSync(); if(window.retroShowWin) window.retroShowWin(); }
   else { setTimeout(() => { try{ AU.resize(); }catch(e){} }, 20); }
 }
 function setSkin(s){
@@ -3406,10 +3390,11 @@ document.querySelectorAll('.skin-card').forEach(card => {
     let tracks = trackCache.get(pl.uri);
     if(!tracks){
       body.innerHTML = '<div class="rfolder-note">Reading disk…</div>';
-      tracks = await fetchTracks(pl);
+      const res = await fetchTracks(pl);
       if(token !== tracksToken) return;                  // a different playlist was opened meanwhile
-      if(tracks === null){
-        body.innerHTML = '<div class="rfolder-note bad">Could not read this playlist</div>';
+      tracks = res.tracks;
+      if(!tracks.length){
+        body.innerHTML = '<div class="rfolder-note bad">' + esc(res.msg || 'This playlist is empty') + '</div>';
         $('rtracks-count').textContent = '0 object(s)';
         return;
       }
@@ -3418,19 +3403,31 @@ document.querySelectorAll('.skin-card').forEach(card => {
     renderTracks(pl, tracks);
   }
 
-  // up to 200 tracks — plenty for a folder view, and it keeps the wait short
+  // up to 200 tracks — plenty for a folder view, and it keeps the wait short.
+  // No `fields` filter: the full payload is bigger but it never trips on
+  // field-syntax errors, and it copes with either item shape Spotify returns.
   async function fetchTracks(pl){
     const id = pl.id || (pl.uri || '').split(':').pop();
-    if(!id) return null;
+    if(!id) return { tracks: [], msg: 'That playlist has no id' };
     const out = [];
-    let url = '/playlists/' + id + '/tracks?limit=100&fields=next,items(track(uri,name,duration_ms,artists(name)))';
+    let url = '/playlists/' + id + '/tracks?limit=100&additional_types=track', msg = '';
     for(let p = 0; p < 2 && url; p++){
       const r = await api(url);
-      if(!r.ok) return out.length ? out : null;
-      ((r.data && r.data.items) || []).forEach(it => { if(it && it.track && it.track.uri) out.push(it.track); });
+      if(!r.ok){
+        // 404 here isn't "no device" — Spotify simply won't hand over some
+        // playlists (its own editorial/algorithmic ones) to third-party apps.
+        msg = r.status === 404 ? "Spotify won't share this playlist"
+            : r.status === 403 ? 'Not allowed to read this playlist'
+            : (r.msg || 'Spotify error ' + r.status);
+        break;
+      }
+      ((r.data && r.data.items) || []).forEach(it => {
+        const t = it && (it.track || it);                // items are {track:…}, but be forgiving
+        if(t && t.uri && t.type !== 'episode') out.push(t);
+      });
       url = (r.data && r.data.next) || null;
     }
-    return out;
+    return { tracks: out, msg };
   }
 
   function renderTracks(pl, tracks){
@@ -3523,13 +3520,6 @@ document.querySelectorAll('.skin-card').forEach(card => {
     $('r-tnow').textContent = $('t-now').textContent;
     $('r-tend').textContent = $('t-end').textContent;
     $('r-status').textContent = !st.id ? 'Ready' : (st.playing ? 'Playing' : 'Paused');
-  };
-
-  // CRT power-on — replayed every time you switch into the retro skin
-  const crt = $('crt');
-  window.retroBoot = function(){
-    crt.classList.remove('boot'); void crt.offsetWidth; crt.classList.add('boot');
-    setTimeout(() => crt.classList.remove('boot'), 700);
   };
 })();
 function retroSync(){ if(window.retroSync) window.retroSync(); }
