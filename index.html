@@ -1009,12 +1009,19 @@
   }
   .bios-top span{opacity:.9;}
   .bios-menu{
-    display:flex;justify-content:space-between;gap:4px;padding:5px 8px;
+    display:flex;justify-content:space-between;gap:2px;padding:3px 4px;
     border:1px solid var(--bi-line);color:var(--bi);
-    font-size:11px;font-weight:600;letter-spacing:.08em;
   }
-  .bios-menu span{opacity:.72;}
-  .bios-menu span.on{opacity:1;color:var(--bi-hot);text-shadow:0 0 8px rgba(124,255,217,.6);}
+  .bios-menu button{
+    flex:1;padding:3px 2px;background:none;border:0;cursor:pointer;
+    color:var(--bi);opacity:.6;font:600 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.06em;
+    transition:opacity .12s, background .12s, color .12s;
+  }
+  .bios-menu button.on{
+    opacity:1;background:var(--bi);color:#001a13;
+    box-shadow:0 0 12px rgba(124,255,217,.45);
+  }
+  @media (hover:hover){ .bios-menu button:not(.on):hover{opacity:1;} }
 
   /* the two panels: log on the left, dithered art on the right */
   .bios-main{display:flex;gap:5px;flex:1;min-height:0;}
@@ -1026,8 +1033,31 @@
   }
   .bios-log b{color:var(--bi);font-weight:400;}
   .bios-log i{color:var(--bi-hot);font-style:normal;}
-  .bios-log div{opacity:0;animation:biosLine .01s linear forwards;}
+  .bios-log > div{opacity:0;animation:biosLine .01s linear forwards;}
   @keyframes biosLine{to{opacity:1;}}
+  /* the panel scrolls only where scrolling makes sense */
+  .bios-log.scroll{overflow-y:auto;white-space:normal;}
+  .bios-log.scroll::-webkit-scrollbar{width:5px;}
+  .bios-log.scroll::-webkit-scrollbar-thumb{background:var(--bi-line);}
+
+  /* selectable rows: devices, skins, actions */
+  .bios-row{
+    display:flex;align-items:baseline;gap:6px;width:100%;text-align:left;
+    padding:4px 5px;background:none;border:0;cursor:pointer;
+    color:var(--bi-dim);font:9px/1.4 'JetBrains Mono',monospace;letter-spacing:.04em;
+  }
+  .bios-row:hover, .bios-row.on{background:var(--bi);color:#001a13;}
+  .bios-row .k{flex:0 0 auto;opacity:.8;}
+  .bios-row .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--bi);}
+  .bios-row:hover .n, .bios-row.on .n{color:#001a13;}
+  .bios-row .t{flex:0 0 auto;font-size:8px;opacity:.75;}
+  .bios-head{padding:3px 5px 5px;color:var(--bi);font-size:8.5px;letter-spacing:.1em;opacity:.75;}
+
+  /* lyrics */
+  .bios-ly{padding:2px 4px;font-size:10px;line-height:1.55;color:var(--bi-dim);}
+  .bios-ly .l{padding:1px 3px;transition:color .18s, opacity .18s;opacity:.55;}
+  .bios-ly .l.cur{color:var(--bi-hot);opacity:1;text-shadow:0 0 9px rgba(124,255,217,.55);}
+  .bios-ly .l.past{opacity:.3;}
   /* the cover is the hero: a big square panel, never cropped to a sliver */
   .bios-art{
     position:relative;flex:0 0 auto;align-self:center;
@@ -1355,8 +1385,12 @@
     <div class="bios-top">
       <span>NOCTURNE BIOS (TM)</span><span class="bios-hide-s">COPYRIGHT (C) 2026</span><span>VER V1.03</span><span>PORT&hellip;3</span>
     </div>
-    <div class="bios-menu">
-      <span class="on">SUMMARY</span><span>FIXED</span><span>BOOT</span><span>SEQ</span><span>MORE+</span>
+    <div class="bios-menu" id="bios-menu">
+      <button class="on" data-tab="summary" type="button">SUMMARY</button>
+      <button data-tab="lyrics" type="button">LYRICS</button>
+      <button data-tab="output" type="button">OUTPUT</button>
+      <button data-tab="skin" type="button">SKIN</button>
+      <button data-tab="more" type="button">MORE+</button>
     </div>
 
     <div class="bios-art">
@@ -3916,15 +3950,210 @@ function biosLog(track, artist, album, durMs){
     '<div style="animation-delay:' + (i * 14) + 'ms">' + l + '</div>').join('');
 }
 
+/* =========================================================================
+   BIOS menu. The output panel is one box that swaps contents: the POST log,
+   lyrics, the device list, the skin picker, and a few actions.
+   ========================================================================= */
+let biosTab = 'summary';
+
+/* ---- lyrics ----
+   Spotify's API doesn't serve lyrics, so these come from LRCLIB, a free open
+   lyrics database that needs no key. When it has a synced (LRC) copy the
+   current line is highlighted; otherwise the plain text is shown. Anything
+   that goes wrong reads as "no lyrics" rather than breaking the panel. */
+const LYRICS = { key:'', state:'idle', lines:null, plain:'', msg:'' };
+
+async function biosLyrics(track, artist, album, durMs){
+  const key = artist + ' ' + track;
+  if(LYRICS.key === key) return;
+  LYRICS.key = key; LYRICS.state = 'loading';
+  LYRICS.lines = null; LYRICS.plain = ''; LYRICS.msg = '';
+  if(biosTab === 'lyrics') biosPanel(true);
+  if(!track || !artist){ LYRICS.state = 'none'; LYRICS.msg = 'NO TRACK LOADED'; return; }
+
+  const q = new URLSearchParams({
+    artist_name: artist, track_name: track,
+    album_name: album || '', duration: String(Math.round((durMs || 0) / 1000)),
+  });
+  try{
+    const r = await fetch('https://lrclib.net/api/get?' + q.toString(), { headers:{ Accept:'application/json' } });
+    if(LYRICS.key !== key) return;                        // track moved on
+    if(r.status === 404){ LYRICS.state = 'none'; LYRICS.msg = 'NO LYRICS ON RECORD'; }
+    else if(!r.ok){ LYRICS.state = 'none'; LYRICS.msg = 'LYRICS BUS ERROR ' + r.status; }
+    else{
+      const d = await r.json();
+      if(LYRICS.key !== key) return;
+      if(d && d.syncedLyrics){
+        LYRICS.lines = parseLRC(d.syncedLyrics);
+        LYRICS.state = LYRICS.lines.length ? 'synced' : 'none';
+        if(!LYRICS.lines.length) LYRICS.msg = 'NO LYRICS ON RECORD';
+      }else if(d && d.plainLyrics){
+        LYRICS.plain = d.plainLyrics; LYRICS.state = 'plain';
+      }else{
+        LYRICS.state = 'none'; LYRICS.msg = 'NO LYRICS ON RECORD';
+      }
+    }
+  }catch(e){
+    if(LYRICS.key !== key) return;
+    LYRICS.state = 'none'; LYRICS.msg = 'LYRICS BUS UNREACHABLE';
+  }
+  if(biosTab === 'lyrics') biosPanel(true);
+}
+
+// "[mm:ss.xx] words" per line, blanks kept so instrumental gaps still scroll
+function parseLRC(src){
+  const out = [];
+  String(src).split('\n').forEach(raw => {
+    const m = raw.match(/^\[(\d+):(\d+(?:[.:]\d+)?)\]\s?(.*)$/);
+    if(!m) return;
+    const ms = (parseInt(m[1], 10) * 60 + parseFloat(m[2].replace(':', '.'))) * 1000;
+    out.push({ t: ms, s: m[3].trim() });
+  });
+  return out.sort((a, b) => a.t - b.t);
+}
+
+function biosSetTab(tab){
+  biosTab = tab;
+  document.querySelectorAll('#bios-menu button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  if(tab === 'output') loadBiosDevices();
+  biosPanel(true);
+}
+
+/* render whatever the active tab shows. `force` rebuilds; otherwise only the
+   cheap live bits (the current lyric line) are touched. */
+function biosPanel(force){
+  const el = $('bios-log'); if(!el) return;
+  el.classList.toggle('scroll', biosTab !== 'summary');
+
+  if(biosTab === 'lyrics'){ biosPaintLyrics(force); return; }
+  if(!force) return;
+
+  if(biosTab === 'summary'){
+    el.dataset.id = '';                                   // force the log to rebuild
+    biosLog($('title').textContent, $('artist').textContent,
+            ($('ab-album') && $('ab-album').textContent) || '', st.dur);
+    return;
+  }
+  if(biosTab === 'skin'){
+    el.innerHTML = '<div class="bios-head">SELECT DISPLAY ADAPTER</div>';
+    const cur = getSkin();
+    [['aura','AURA','WARP FIELD'],['retro','RETRO 95','DESKTOP'],['bios','BIOS','THIS SCREEN']]
+      .forEach(([id, name, note], i) => {
+        const b = document.createElement('button');
+        b.className = 'bios-row' + (id === cur ? ' on' : ''); b.type = 'button';
+        b.innerHTML = '<span class="k">[' + (i+1) + ']</span><span class="n">' + name + '</span><span class="t">' + note + '</span>';
+        b.onclick = () => { if(id !== cur) setSkin(id); };
+        el.appendChild(b);
+      });
+    return;
+  }
+  if(biosTab === 'more'){
+    el.innerHTML = '<div class="bios-head">SYSTEM</div>';
+    const act = [
+      ['SHUFFLE', () => st.shuffle ? 'ON' : 'OFF', () => $('btn-shuffle').click()],
+      ['REPEAT',  () => (st.repeat || 'off').toUpperCase(), () => $('btn-repeat').click()],
+      ['RESCAN DEVICES', () => '', () => { loadBiosDevices(); biosSetTab('output'); }],
+      ['LIBRARY',  () => '', () => { $('btn-search') && $('btn-search').click(); }],
+      ['PLAYLISTS',() => '', () => { $('btn-lists') && $('btn-lists').click(); }],
+      ['LOG OFF',  () => '', () => $('btn-logout').click()],
+    ];
+    act.forEach(([name, val, fn], i) => {
+      const b = document.createElement('button');
+      b.className = 'bios-row'; b.type = 'button';
+      b.innerHTML = '<span class="k">[' + (i+1) + ']</span><span class="n">' + name + '</span><span class="t">' + val() + '</span>';
+      b.onclick = () => { fn(); setTimeout(() => { if(biosTab === 'more') biosPanel(true); }, 400); };
+      el.appendChild(b);
+    });
+    return;
+  }
+  if(biosTab === 'output'){
+    el.innerHTML = '<div class="bios-head">AUDIO OUTPUT DEVICE</div>';
+    if(BIOSDEV.state === 'loading'){
+      el.insertAdjacentHTML('beforeend', '<div class="bios-head">DETECTING&hellip;</div>');
+    }else if(BIOSDEV.msg){
+      el.insertAdjacentHTML('beforeend', '<div class="bios-head">' + esc(BIOSDEV.msg) + '</div>');
+    }else{
+      BIOSDEV.list.forEach((dev, i) => {
+        const b = document.createElement('button');
+        b.className = 'bios-row' + (dev.is_active ? ' on' : ''); b.type = 'button';
+        b.innerHTML = '<span class="k">[' + (i+1) + ']</span><span class="n">' + esc(dev.name) +
+                      '</span><span class="t">' + esc(String(dev.type || '').toUpperCase()) + '</span>';
+        b.onclick = async () => {
+          const res = await api('/me/player', { method:'PUT', body: JSON.stringify({ device_ids:[dev.id], play: st.playing }) });
+          toast(res.ok ? 'Sent to ' + dev.name : res.msg);
+          if(res.ok){ activeDeviceId = dev.id; setTimeout(() => { loadBiosDevices(); }, 700); }
+          setTimeout(poll, 800);
+        };
+        el.appendChild(b);
+      });
+    }
+  }
+}
+
+const BIOSDEV = { state:'idle', list:[], msg:'' };
+async function loadBiosDevices(){
+  BIOSDEV.state = 'loading'; BIOSDEV.msg = '';
+  if(biosTab === 'output') biosPanel(true);
+  const r = await api('/me/player/devices');
+  BIOSDEV.state = 'done';
+  if(!r.ok){ BIOSDEV.list = []; BIOSDEV.msg = String(r.msg || 'DEVICE ERROR').toUpperCase(); }
+  else{
+    BIOSDEV.list = (r.data && r.data.devices) || [];
+    BIOSDEV.msg = BIOSDEV.list.length ? '' : 'NO DEVICES — OPEN SPOTIFY';
+  }
+  if(biosTab === 'output') biosPanel(true);
+}
+
+let lyCur = -1;
+function biosPaintLyrics(force){
+  const el = $('bios-log');
+  if(LYRICS.state === 'loading' || LYRICS.state === 'idle'){
+    if(force) el.innerHTML = '<div class="bios-head">READING LYRICS BUS&hellip;</div>';
+    return;
+  }
+  if(LYRICS.state === 'none'){
+    if(force) el.innerHTML = '<div class="bios-head">' + esc(LYRICS.msg || 'NO LYRICS ON RECORD') + '</div>';
+    return;
+  }
+  if(LYRICS.state === 'plain'){
+    if(force){
+      el.innerHTML = '<div class="bios-ly">' +
+        LYRICS.plain.split('\n').map(l => '<div class="l cur">' + esc(l) + '</div>').join('') + '</div>';
+    }
+    return;
+  }
+  // synced: rebuild once, then only move the highlight
+  if(force || !el.querySelector('.bios-ly')){
+    el.innerHTML = '<div class="bios-ly">' +
+      LYRICS.lines.map((l, i) => '<div class="l" data-i="' + i + '">' + esc(l.s || '· · ·') + '</div>').join('') +
+      '</div>';
+    lyCur = -1;
+  }
+  let idx = -1;
+  for(let i = 0; i < LYRICS.lines.length; i++){ if(LYRICS.lines[i].t <= st.pos + 250) idx = i; else break; }
+  if(idx === lyCur) return;
+  lyCur = idx;
+  const nodes = el.querySelectorAll('.bios-ly .l');
+  nodes.forEach((n, i) => {
+    n.classList.toggle('cur', i === idx);
+    n.classList.toggle('past', i < idx);
+  });
+  const active = nodes[idx];
+  if(active) el.scrollTop = Math.max(0, active.offsetTop - el.clientHeight * 0.42);
+}
+
 function biosSync(){
   if(document.body.dataset.skin !== 'bios') return;
   const track = $('title').textContent, artist = $('artist').textContent;
   const album = ($('ab-album') && $('ab-album').textContent) || '';
 
-  if($('bios-log').dataset.id !== (st.id || '')){         // new track — rebuild the readout
-    $('bios-log').dataset.id = st.id || '';
+  if(st.id) biosLyrics(track, artist, album, st.dur);
+
+  if(biosTab === 'summary' && $('bios-log').dataset.id !== (st.id || '')){
+    $('bios-log').dataset.id = st.id || '';               // new track — rebuild the readout
     biosLog(track, artist, album, st.dur);
   }
+  if(biosTab === 'lyrics') biosPaintLyrics(false);         // keep the highlight moving
 
   BIOS.sample($('art').getAttribute('data-src') || '');
   $('bios-artlab').textContent = st.id ? (artist + ' / ' + track).toUpperCase().slice(0, 40) : 'NO SIGNAL';
@@ -3982,6 +4211,10 @@ function biosSync(){
     await control('/me/player/seek?position_ms=' + ms, { method:'PUT' });
     st.seeking = false;
     setTimeout(poll, 300);
+  });
+
+  document.querySelectorAll('#bios-menu button').forEach(b => {
+    b.onclick = () => biosSetTab(b.dataset.tab);
   });
 
   addEventListener('resize', () => { if(document.body.dataset.skin === 'bios') BIOS.resize(); });
@@ -4132,7 +4365,7 @@ function enterApp(){
   // brief version stamp so we can confirm the latest file actually loaded
   (function(){
     const v = document.createElement('div');
-    v.textContent = 'build v16';
+    v.textContent = 'build v17';
     v.style.cssText = 'position:fixed;right:8px;top:calc(var(--safe-t) + 4px);z-index:99;'+
       'font:9px monospace;color:#4C7BFF;opacity:.7;pointer-events:none;';
     document.body.appendChild(v);
