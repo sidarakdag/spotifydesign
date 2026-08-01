@@ -43,9 +43,44 @@
     --safe-t:env(safe-area-inset-top,0px);
     --safe-b:env(safe-area-inset-bottom,0px);
 
-    --s1:8px; --s2:16px; --s3:24px; --s4:32px;
+    /* 4pt rhythm (Material spacing-scale) */
+    --s0:4px; --s1:8px; --s1h:12px; --s2:16px; --s3:24px; --s4:32px; --s5:48px;
+
+    /* Type scale — one ladder, used everywhere */
+    --t-micro:10px; --t-cap:11px; --t-sm:13px; --t-base:15px; --t-lg:18px; --t-xl:22px;
+
+    /* ---- motion: one rhythm for the whole app ----
+       enter ease-out, exit ease-in, exits ~65% of enter (MD motion). */
+    --d-press:90ms;      /* tap feedback — must land under 100ms */
+    --d-1:160ms;         /* micro-interactions */
+    --d-2:240ms;         /* state changes */
+    --d-3:340ms;         /* surfaces entering */
+    --d-out:200ms;       /* surfaces leaving */
+    --e-out:cubic-bezier(.22,1,.36,1);        /* decelerate — entering */
+    --e-in:cubic-bezier(.4,0,1,1);            /* accelerate — exiting */
+    --e-spring:cubic-bezier(.34,1.56,.64,1);  /* slight overshoot */
+    --stagger:38ms;      /* per-item list delay (MD: 30–50ms) */
+
+    /* Album-adaptive accent. extract() writes --accent-h/s/l per track; the
+       blue below is the fallback until artwork lands. */
+    --accent-h:224; --accent-s:100%; --accent-l:65%;
     --pulse:0;
   }
+  /* Registering the hue lets it interpolate, so the whole UI drifts to the
+     new artwork's colour instead of snapping. Unsupported browsers just cut. */
+  @property --accent-h{ syntax:'<number>'; initial-value:224; inherits:true; }
+  @property --accent-s{ syntax:'<percentage>'; initial-value:100%; inherits:true; }
+  @property --accent-l{ syntax:'<percentage>'; initial-value:65%; inherits:true; }
+
+  /* every accent in the UI derives from the artwork */
+  :root{
+    --blue:hsl(var(--accent-h) var(--accent-s) var(--accent-l));
+    --blue-soft:hsl(var(--accent-h) var(--accent-s) 80%);
+    --blue-glow:hsl(var(--accent-h) var(--accent-s) var(--accent-l) / .55);
+    --blue-dim:hsl(var(--accent-h) var(--accent-s) var(--accent-l) / .14);
+    transition:--accent-h 700ms linear, --accent-s 700ms linear, --accent-l 700ms linear;
+  }
+  @media (prefers-reduced-motion: reduce){ :root{transition:none;} }
 
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{height:100%;margin:0;}
@@ -100,7 +135,7 @@
   .wordmark{
     font-family:var(--font-display);font-style:italic;font-size:20px;letter-spacing:.01em;
     color:var(--bone);
-    text-shadow:0 0 20px rgba(76,123,255,.25);
+    text-shadow:0 0 20px hsl(var(--accent-h) var(--accent-s) var(--accent-l) / .28);
   }
   .topbar-actions{
     display:flex;align-items:center;gap:var(--s1);
@@ -110,24 +145,34 @@
   .topbar-actions::-webkit-scrollbar{display:none;}
 
   /* navigation pills — machined titanium, blue when live */
+  /* Chips carry an icon over a label and stand 44px tall, so they clear the
+     minimum touch target instead of the 28px they used to be. */
   .chip{
     flex:0 0 auto;position:relative;
-    font-family:var(--font-mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;
-    color:var(--ash);padding:8px 13px;border-radius:11px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    min-width:52px;min-height:44px;padding:5px 8px 4px;border-radius:14px;
+    font-family:var(--font-mono);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ash);
     background:linear-gradient(180deg, var(--b3), var(--b1));
     border:1px solid var(--line);
-    box-shadow:
-      inset 0 1px 0 var(--edge),
-      inset 0 -1px 0 rgba(0,0,0,.6),
-      0 1px 2px rgba(0,0,0,.5);
-    transition:color .25s, transform .12s, box-shadow .25s, border-color .25s;
+    box-shadow:inset 0 1px 0 var(--edge), inset 0 -1px 0 rgba(0,0,0,.6), var(--sh-1);
+    transition:color var(--d-2) var(--e-out), transform var(--d-press) var(--e-out),
+               box-shadow var(--d-2) var(--e-out), border-color var(--d-2) var(--e-out);
   }
-  .chip::after{
-    content:"";position:absolute;inset:0;border-radius:11px;pointer-events:none;
-    box-shadow:0 0 0 0 var(--blue-glow);transition:box-shadow .3s;
+  .chip svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.7;
+    stroke-linecap:round;stroke-linejoin:round;transition:transform var(--d-2) var(--e-spring);}
+  .chip-l{line-height:1;}
+  @media (hover:hover){ .chip:hover{color:var(--bone);border-color:var(--line-2);} }
+  .chip:hover svg{transform:translateY(-1px);}
+  /* press feedback stays inside the element's bounds — no layout shift */
+  .chip:active{transform:scale(.94);color:var(--bone);}
+  /* the sheet this chip owns is open */
+  .chip.on{
+    color:var(--bone);border-color:hsl(var(--accent-h) var(--accent-s) var(--accent-l) / .45);
+    box-shadow:inset 0 1px 0 var(--edge), 0 0 0 1px hsl(var(--accent-h) var(--accent-s) var(--accent-l) / .3),
+               0 0 20px -6px var(--blue-glow);
   }
-  .chip:hover{color:var(--bone);border-color:var(--line-2);}
-  .chip:active{transform:scale(.95);}
+  .chip.on svg{color:var(--blue-soft);}
 
   /* ---------- now playing ---------- */
   .stage{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;gap:var(--s3);min-height:0;padding:var(--s1) 0;}
@@ -201,29 +246,38 @@
   /* ---------- scrubber ---------- */
   .scrub{display:flex;flex-direction:column;gap:0;}
   #cat{display:block;width:100%;height:52px;margin-bottom:-8px;}
-  .track{position:relative;height:26px;display:flex;align-items:center;cursor:pointer;touch-action:none;}
+  /* 44px of grabbable height around a 3px rail — the target is generous
+     without the bar looking heavy. */
+  .track{position:relative;height:44px;display:flex;align-items:center;cursor:pointer;touch-action:none;}
   .track::before{
     content:"";position:absolute;left:0;right:0;height:3px;border-radius:3px;
     background:linear-gradient(180deg, #050505, #0E0E0E);
     box-shadow:inset 0 1px 1px rgba(0,0,0,.8), inset 0 -1px 0 rgba(255,255,255,.04);
+    transition:height var(--d-2) var(--e-out);
   }
   .fill{
     position:absolute;left:0;height:3px;border-radius:3px;
     background:linear-gradient(90deg, var(--blue), var(--blue-soft));
     box-shadow:0 0 12px var(--blue-glow), 0 0 4px var(--blue-glow);
+    transition:height var(--d-2) var(--e-out);
   }
+  /* the rail thickens under the finger, so scrubbing feels grabbed */
+  .track:active::before, .track:active .fill{height:6px;border-radius:6px;}
+  @media (hover:hover){ .track:hover::before, .track:hover .fill{height:5px;border-radius:5px;} }
   .head{
     position:absolute;width:12px;height:12px;border-radius:50%;
     background:radial-gradient(circle at 35% 30%, #fff, var(--blue-soft) 70%);
     transform:translateX(-6px);
     box-shadow:0 0 14px var(--blue-glow), 0 0 4px #fff, 0 1px 3px rgba(0,0,0,.6);
-    transition:transform .18s ease;
+    transition:transform var(--d-1) var(--e-spring);
   }
   .track:active .head{transform:translateX(-6px) scale(1.4);}
   .times{
     display:flex;justify-content:space-between;margin-top:11px;
-    font-family:var(--font-mono);font-size:10px;color:var(--ash);letter-spacing:.06em;
+    font-family:var(--font-mono);font-size:var(--t-micro);color:var(--ash);letter-spacing:.06em;
+    font-variant-numeric:tabular-nums;   /* digits keep their column as time ticks */
   }
+  .times #t-now{color:var(--bone);transition:color var(--d-2) var(--e-out);}
 
   /* ---------- transport ---------- */
   .transport{display:flex;align-items:center;justify-content:space-between;gap:var(--s1);margin-top:var(--s1);}
@@ -233,15 +287,32 @@
     background:linear-gradient(180deg, var(--b3), var(--b0));
     border:1px solid var(--line);
     box-shadow:inset 0 1px 0 var(--edge), inset 0 -1px 0 rgba(0,0,0,.6), 0 2px 6px rgba(0,0,0,.5);
-    transition:color .2s, transform .12s, border-color .25s, box-shadow .25s;
+    transition:color var(--d-2) var(--e-out), transform var(--d-press) var(--e-out),
+               border-color var(--d-2) var(--e-out), box-shadow var(--d-2) var(--e-out);
   }
-  .tbtn:active{transform:scale(.9);}
-  .tbtn:hover{color:var(--bone);border-color:var(--line-2);}
+  /* stay in the 0.95–1.05 press band; .9 read as a flinch */
+  .tbtn:active{transform:scale(.95);}
+  @media (hover:hover){ .tbtn:hover{color:var(--bone);border-color:var(--line-2);} }
   .tbtn.on{
-    color:var(--blue-soft);border-color:rgba(76,123,255,.4);
-    box-shadow:inset 0 1px 0 var(--edge), 0 0 18px -4px var(--blue-glow), 0 0 0 1px rgba(76,123,255,.15);
+    color:var(--blue-soft);border-color:hsl(var(--accent-h) var(--accent-s) var(--accent-l) / .4);
+    box-shadow:inset 0 1px 0 var(--edge), 0 0 18px -4px var(--blue-glow),
+               0 0 0 1px hsl(var(--accent-h) var(--accent-s) var(--accent-l) / .15);
   }
-  .tbtn svg{width:20px;height:20px;fill:currentColor;}
+  .tbtn svg{width:20px;height:20px;fill:currentColor;transition:transform var(--d-2) var(--e-spring);}
+  /* play and pause sit on top of each other and swap by scale+fade, so the
+     hero button morphs rather than blinking */
+  .tbtn.big svg{
+    position:absolute;inset:0;margin:auto;width:26px;height:26px;
+    display:block;                      /* beats the UA [hidden] rule so it can fade */
+    transition:opacity var(--d-1) var(--e-out), transform var(--d-2) var(--e-spring);
+  }
+  .tbtn.big svg[hidden]{opacity:0;transform:scale(.55) rotate(-10deg);pointer-events:none;}
+  /* skip buttons nudge in the direction they travel */
+  #btn-next:active svg{transform:translateX(3px);}
+  #btn-prev:active svg{transform:translateX(-3px);}
+  /* shuffle/repeat confirm a state change with a quick turn */
+  .tbtn.on svg{animation:tbtnPop var(--d-3) var(--e-spring);}
+  @keyframes tbtnPop{0%{transform:scale(.8) rotate(-12deg);}100%{transform:none;}}
 
   /* hero: the play button, machined and floating */
   .tbtn.big{
@@ -304,9 +375,9 @@
   #scrim{
     position:fixed;inset:0;z-index:4;background:rgba(0,0,0,.55);
     -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
-    opacity:0;pointer-events:none;transition:opacity .4s ease;
+    opacity:0;pointer-events:none;transition:opacity var(--d-out) var(--e-in);
   }
-  #scrim.on{opacity:1;pointer-events:auto;}
+  #scrim.on{opacity:1;pointer-events:auto;transition:opacity var(--d-3) var(--e-out);}
 
   .sheet{
     position:fixed;left:0;right:0;bottom:0;z-index:5;
@@ -323,9 +394,17 @@
       0 -1px 0 0 var(--blue-dim);
     padding:var(--s2) var(--s3) calc(var(--safe-b) + var(--s3));
     transform:translateY(101%);
-    transition:transform .5s cubic-bezier(.22,1,.36,1);
-    height:82vh;display:flex;flex-direction:column;gap:var(--s2);
+    /* leaving is quicker than arriving, so dismissal feels responsive */
+    transition:transform var(--d-out) var(--e-in);
+    /* fits its content instead of always standing 82vh tall, so a two-item
+       list doesn't open a near-empty panel */
+    height:auto;max-height:82vh;min-height:34vh;
+    display:flex;flex-direction:column;gap:var(--s2);
+    touch-action:none;
   }
+  .sheet.open{transition:transform var(--d-3) var(--e-out);}
+  /* while a finger is on it the sheet tracks the drag with no easing at all */
+  .sheet.dragging{transition:none;}
   .sheet::before{
     content:"";position:absolute;top:9px;left:50%;transform:translateX(-50%);
     width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,.14);
@@ -344,7 +423,23 @@
     transition:color .2s, border-color .25s;
   }
   .sheet-close:hover{color:var(--bone);border-color:var(--line-2);}
-  .sheet-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;}
+  /* the sheet itself swallows gestures so it can be dragged away; the list
+     inside must still scroll, so it takes vertical panning back */
+  .sheet-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;touch-action:pan-y;}
+  .sheet-body::-webkit-scrollbar{width:0;}
+
+  /* skeletons instead of a word while a list loads */
+  .skel{display:flex;align-items:center;gap:var(--s2);padding:10px 0;}
+  .skel-art{width:44px;height:44px;border-radius:9px;flex:0 0 auto;}
+  .skel-lines{flex:1;display:flex;flex-direction:column;gap:7px;}
+  .skel-l{height:10px;border-radius:5px;}
+  .skel-l.short{width:45%;}
+  .skel-art, .skel-l{
+    background:linear-gradient(100deg, var(--b2) 30%, var(--b4) 48%, var(--b2) 66%);
+    background-size:280% 100%;
+    animation:shimmer 1.25s linear infinite;
+  }
+  @keyframes shimmer{from{background-position:150% 0;}to{background-position:-50% 0;}}
 
   .search-input{
     width:100%;background:rgba(0,0,0,.4);border:1px solid var(--line);border-radius:14px;
@@ -606,7 +701,7 @@
   @keyframes sheen{0%{left:-60%;}100%{left:130%;}}
 
   /* sheet rows fade+rise in a stagger when a sheet opens */
-  .sheet.open .stagger-in{animation:rowIn .5s cubic-bezier(.22,1,.36,1) both;animation-delay:var(--d,0ms);}
+  .sheet.open .stagger-in{animation:rowIn var(--d-3) var(--e-out) both;animation-delay:var(--d,0ms);}
   @keyframes rowIn{0%{opacity:0;transform:translateY(10px);filter:blur(4px);}100%{opacity:1;transform:none;filter:blur(0);}}
 
   /* animated gradient hairline under a sheet header */
@@ -1248,11 +1343,11 @@
   <header class="topbar">
     <span class="wordmark">Nocturne</span>
     <div class="topbar-actions">
-      <button class="chip" id="btn-search">Search</button>
-      <button class="chip" id="btn-lists">Lists</button>
-      <button class="chip" id="btn-queue">Queue</button>
-      <button class="chip" id="btn-device">Output</button>
-      <button class="chip" id="btn-skin">Skins</button>
+      <button class="chip" id="btn-search" aria-label="Search your library"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span class="chip-l">Search</span></button>
+      <button class="chip" id="btn-lists" aria-label="Your playlists"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h11M4 12h11M4 17h7"/><circle cx="18" cy="16" r="2.6"/><path d="M20.6 16V8.5l-3.4 1"/></svg><span class="chip-l">Lists</span></button>
+      <button class="chip" id="btn-queue" aria-label="Play queue"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 11h16M4 16h9"/><path d="M15.5 15.5l4.5 2.6-4.5 2.6z" fill="currentColor" stroke="none"/></svg><span class="chip-l">Queue</span></button>
+      <button class="chip" id="btn-device" aria-label="Choose output device"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3"/><circle cx="12" cy="15.5" r="3"/><path d="M10.5 7h3"/></svg><span class="chip-l">Output</span></button>
+      <button class="chip" id="btn-skin" aria-label="Change skin"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2c-4.8 0-8.8 3.6-8.8 8.1 0 4.4 3.4 6.7 6.4 6.7 1.7 0 2.3 1.1 1.7 2.2-.4.8.2 1.6 1.1 1.5 4.6-.5 8.4-4.4 8.4-9.5 0-5-4-9-8.8-9z"/><circle cx="8" cy="10" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="7.6" r="1.1" fill="currentColor" stroke="none"/><circle cx="16" cy="10" r="1.1" fill="currentColor" stroke="none"/></svg><span class="chip-l">Skins</span></button>
     </div>
   </header>
 
@@ -1299,7 +1394,7 @@
       </button>
       <button class="tbtn big" id="btn-play" aria-label="Play">
         <svg id="ico-play" viewBox="0 0 24 24"><path d="M7 4.5l13 7.5-13 7.5v-15z"/></svg>
-        <svg id="ico-pause" viewBox="0 0 24 24" style="display:none"><path d="M6.5 4.5h3.6v15H6.5v-15zm7.4 0h3.6v15h-3.6v-15z"/></svg>
+        <svg id="ico-pause" viewBox="0 0 24 24" hidden><path d="M6.5 4.5h3.6v15H6.5v-15zm7.4 0h3.6v15h-3.6v-15z"/></svg>
       </button>
       <button class="tbtn" id="btn-next" aria-label="Next">
         <svg viewBox="0 0 24 24"><path d="M15.5 5H18v14h-2.5V5zM5 5l9.5 7L5 19V5z"/></svg>
@@ -1318,7 +1413,7 @@
         <div class="vol-fill" id="vol-fill" style="width:50%"></div>
       </div>
     </div>
-    <button class="chip" id="btn-logout">Exit</button>
+    <button class="chip" id="btn-logout" aria-label="Sign out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-2"/><path d="M19 12H9m10 0-3-3m3 3-3 3"/></svg><span class="chip-l">Exit</span></button>
   </div>
 </div>
 
@@ -1504,7 +1599,7 @@
     </div>
   </div>
   <input class="search-input" id="q" type="text" placeholder="Filter by song, artist, album" autocomplete="off" autocorrect="off" spellcheck="false">
-  <div class="sheet-body" id="results"><div class="note loading">Loading your library</div></div>
+  <div class="sheet-body" id="results"><div class="skel"><div class="skel-art"></div><div class="skel-lines"><div class="skel-l"></div><div class="skel-l short"></div></div></div><div class="skel"><div class="skel-art"></div><div class="skel-lines"><div class="skel-l"></div><div class="skel-l short"></div></div></div><div class="skel"><div class="skel-art"></div><div class="skel-lines"><div class="skel-l"></div><div class="skel-l short"></div></div></div><div class="skel"><div class="skel-art"></div><div class="skel-lines"><div class="skel-l"></div><div class="skel-l short"></div></div></div></div>
 </div>
 
 <div class="sheet" id="sheet-queue">
@@ -1520,7 +1615,7 @@
     <h2>Playback output</h2>
     <button class="sheet-close" data-close>Close</button>
   </div>
-  <div class="sheet-body" id="devices"><div class="note loading">Loading devices</div></div>
+  <div class="sheet-body" id="devices"><div class="skel"><div class="skel-art"></div><div class="skel-lines"><div class="skel-l"></div><div class="skel-l short"></div></div></div><div class="skel"><div class="skel-art"></div><div class="skel-lines"><div class="skel-l"></div><div class="skel-l short"></div></div></div><div class="skel"><div class="skel-art"></div><div class="skel-lines"><div class="skel-l"></div><div class="skel-l short"></div></div></div><div class="skel"><div class="skel-art"></div><div class="skel-lines"><div class="skel-l"></div><div class="skel-l short"></div></div></div></div>
 </div>
 
 <div class="sheet" id="sheet-lists">
@@ -1528,7 +1623,7 @@
     <h2>Your playlists</h2>
     <button class="sheet-close" data-close>Close</button>
   </div>
-  <div class="sheet-body" id="lists"><div class="note loading">Loading playlists</div></div>
+  <div class="sheet-body" id="lists"><div class="skel"><div class="skel-art"></div><div class="skel-lines"><div class="skel-l"></div><div class="skel-l short"></div></div></div><div class="skel"><div class="skel-art"></div><div class="skel-lines"><div class="skel-l"></div><div class="skel-l short"></div></div></div><div class="skel"><div class="skel-art"></div><div class="skel-lines"><div class="skel-l"></div><div class="skel-l short"></div></div></div><div class="skel"><div class="skel-art"></div><div class="skel-lines"><div class="skel-l"></div><div class="skel-l short"></div></div></div></div>
 </div>
 
 <div class="sheet" id="sheet-skins">
@@ -1556,7 +1651,7 @@
 </div>
 
 
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <script>
 /* =========================================================================
@@ -1600,6 +1695,12 @@ const S = {
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* Placeholder rows shown while a list loads — reserves the same space the
+   real rows will take, so nothing jumps when they arrive (CLS). */
+const skeleton = (n = 6) => Array.from({ length: n }, () =>
+  '<div class="skel"><div class="skel-art"></div><div class="skel-lines">' +
+  '<div class="skel-l"></div><div class="skel-l short"></div></div></div>').join('');
 
 /* ---------- PKCE ---------- */
 const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf)))
@@ -1786,6 +1887,14 @@ function extract(img){
 
     // drive the Aura warp's colours from the album's two dominant hues
     if(typeof AU !== 'undefined' && AU.setPalette) AU.setPalette(h1, h2);
+
+    // …and let the whole interface take on the artwork's colour. Saturation
+    // and lightness are clamped so text and controls keep their contrast
+    // whatever the cover throws at us.
+    const r = document.documentElement.style;
+    r.setProperty('--accent-h', Math.round(h1));
+    r.setProperty('--accent-s', Math.round(Math.min(Math.max(s1, .55), .92) * 100) + '%');
+    r.setProperty('--accent-l', Math.round(Math.min(Math.max(l1, .58), .72) * 100) + '%');
   }catch(e){ /* tainted canvas — ignore, keep current palette */ }
 }
 
@@ -2465,8 +2574,10 @@ function tick(){
   paint();
 }
 function setPlayIcon(on){
-  $('ico-play').style.display  = on ? 'none' : 'block';
-  $('ico-pause').style.display = on ? 'block' : 'none';
+  // SVG elements have no .hidden property (that's HTMLElement only) — the
+  // attribute has to be toggled directly or the icons never swap.
+  $('ico-play').toggleAttribute('hidden', on);
+  $('ico-pause').toggleAttribute('hidden', !on);
   $('btn-play').setAttribute('aria-label', on ? 'Pause' : 'Play');
   document.body.classList.toggle('paused', !on);
   P.setPlaying(on);
@@ -2921,15 +3032,60 @@ draggable($('vol'),
    SHEETS — explicit open and close
    ========================================================================= */
 const SHEETS = ['sheet-search','sheet-queue','sheet-device','sheet-lists','sheet-skins'];
+/* which chip owns which sheet, so the open one can light up */
+const SHEET_CHIP = {
+  'sheet-search':'btn-search', 'sheet-lists':'btn-lists', 'sheet-queue':'btn-queue',
+  'sheet-device':'btn-device', 'sheet-skins':'btn-skin',
+};
 function openSheet(id){
-  SHEETS.forEach(s => $(s).classList.toggle('open', s === id));
+  SHEETS.forEach(s => { const el = $(s); el.style.transform = ''; el.classList.toggle('open', s === id); });
+  Object.entries(SHEET_CHIP).forEach(([sheet, chip]) => {
+    const c = $(chip); if(c) c.classList.toggle('on', sheet === id);
+  });
   $('scrim').classList.add('on');
 }
 function closeSheets(){
-  SHEETS.forEach(s => $(s).classList.remove('open'));
+  SHEETS.forEach(s => { const el = $(s); el.classList.remove('open'); el.style.transform = ''; });
+  Object.values(SHEET_CHIP).forEach(c => { const el = $(c); if(el) el.classList.remove('on'); });
   $('scrim').classList.remove('on');
   $('q').blur();
 }
+
+/* Swipe a sheet down to dismiss it. The sheet follows the finger exactly
+   (with resistance if dragged upward), and only commits past a threshold —
+   below that it springs back, so a stray touch never closes it. */
+(function sheetDrag(){
+  SHEETS.forEach(id => {
+    const el = $(id); if(!el) return;
+    let y0 = 0, dy = 0, active = false;
+    el.addEventListener('pointerdown', e => {
+      // ignore drags that start on something scrollable or interactive
+      if(e.target.closest('.sheet-body, input, button, .row')) return;
+      y0 = e.clientY; dy = 0; active = true;
+      el.classList.add('dragging');
+      try{ el.setPointerCapture(e.pointerId); }catch(_){}
+    });
+    el.addEventListener('pointermove', e => {
+      if(!active) return;
+      dy = e.clientY - y0;
+      if(dy < 0) dy = dy * 0.28;                    // resistance pulling up
+      el.style.transform = 'translateY(' + dy + 'px)';
+      const fade = Math.max(0, 1 - Math.max(0, dy) / (el.offsetHeight * 0.9));
+      $('scrim').style.opacity = String(fade);
+    });
+    const end = e => {
+      if(!active) return;
+      active = false;
+      el.classList.remove('dragging');
+      try{ el.releasePointerCapture(e.pointerId); }catch(_){}
+      $('scrim').style.opacity = '';
+      if(dy > 110) closeSheets();                   // past the threshold: commit
+      else el.style.transform = '';                 // otherwise spring back
+    };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+  });
+})();
 document.querySelectorAll('[data-close]').forEach(b => { b.onclick = closeSheets; });
 $('scrim').onclick = closeSheets;
 
@@ -3254,7 +3410,7 @@ async function harvest(){
 
 /* ---------- devices ---------- */
 async function loadDevices(){
-  $('devices').innerHTML = '<div class="note loading">Looking for devices</div>';
+  $('devices').innerHTML = skeleton();
   const r = await api('/me/player/devices');
   if(!r.ok){ $('devices').innerHTML = '<div class="note bad">' + esc(r.msg) + '</div>'; return; }
   const list = (r.data && r.data.devices) || [];
@@ -3300,7 +3456,7 @@ async function loadDevices(){
 
 /* ---------- queue ---------- */
 async function loadQueue(){
-  $('queue').innerHTML = '<div class="note loading">Loading</div>';
+  $('queue').innerHTML = skeleton();
   const r = await api('/me/player/queue');
   if(!r.ok){ $('queue').innerHTML = '<div class="note bad">' + esc(r.msg) + '</div>'; return; }
   const list = ((r.data && r.data.queue) || []).slice(0, 20).map(norm).filter(Boolean);
@@ -3373,7 +3529,7 @@ $('art-card').addEventListener('click', () => {
 let PLAYLISTS = [];
 async function loadLists(force){
   if(PLAYLISTS.length && !force){ renderLists(); return; }
-  $('lists').innerHTML = '<div class="note loading">Loading playlists</div>';
+  $('lists').innerHTML = skeleton();
   PLAYLISTS = [];
   let url = '/me/playlists?limit=50';
   for(let p = 0; p < 10 && url; p++){
@@ -4453,6 +4609,8 @@ function biosSync(){
   }
 
   /* ---- staggered reveal for rows as they enter any sheet ---- */
+  const STAGGER = parseFloat(getComputedStyle(document.documentElement)
+    .getPropertyValue('--stagger')) || 38;
   if(!reduce){
     document.querySelectorAll('.sheet-body').forEach(body => {
       new MutationObserver(muts => {
@@ -4462,8 +4620,9 @@ function biosSync(){
             if(node.nodeType !== 1) continue;
             node.style.animation = 'none';
             void node.offsetWidth;                 // restart the animation
-            node.style.animation = 'rowIn .5s cubic-bezier(.22,1,.36,1) both';
-            node.style.animationDelay = Math.min(i*28, 260) + 'ms';
+            node.style.animation = 'rowIn var(--d-3) var(--e-out) both';
+            // cap the run-in so a long list never feels like it's waiting
+            node.style.animationDelay = Math.min(i * STAGGER, 260) + 'ms';
             i++;
           }
         }
@@ -4515,7 +4674,7 @@ function enterApp(){
   // brief version stamp so we can confirm the latest file actually loaded
   (function(){
     const v = document.createElement('div');
-    v.textContent = 'build v19';
+    v.textContent = 'build v20';
     v.style.cssText = 'position:fixed;right:8px;top:calc(var(--safe-t) + 4px);z-index:99;'+
       'font:9px monospace;color:#4C7BFF;opacity:.7;pointer-events:none;';
     document.body.appendChild(v);
