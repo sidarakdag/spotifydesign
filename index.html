@@ -976,6 +976,118 @@
   }
 
   /* =========================================================================
+     BIOS SKIN — a POST/setup screen in phosphor mint on black. The album art
+     is redrawn as a vertical-bar particle dither on a canvas.
+     ========================================================================= */
+  #bios{
+    position:fixed;inset:0;z-index:6;display:none;overflow:hidden;
+    background:#000;color:var(--bi-dim);
+    font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:11px;line-height:1.35;letter-spacing:.02em;
+    -webkit-font-smoothing:none;user-select:none;-webkit-user-select:none;
+  }
+  body[data-skin="bios"] #bios{display:flex;flex-direction:column;}
+  body[data-skin="bios"]{background:#000;}
+  body[data-skin="bios"] #app,
+  body[data-skin="bios"] #aura,
+  body[data-skin="bios"] #figure-wrap,
+  body[data-skin="bios"] #field,
+  body[data-skin="bios"] #stars,
+  body[data-skin="bios"] #bloom,
+  body[data-skin="bios"] #grain,
+  body[data-skin="bios"] #cursor-glow{display:none !important;}
+  :root{ --bi:#7cffd9; --bi-dim:#1f9e7c; --bi-hot:#d9fff2; --bi-line:#0c5f49; }
+
+  .bios-wrap{
+    position:relative;z-index:2;flex:1;min-height:0;display:flex;flex-direction:column;gap:5px;
+    padding:calc(var(--safe-t) + 7px) 7px calc(var(--safe-b) + 7px);
+  }
+  /* header + menu strip */
+  .bios-top{
+    display:flex;justify-content:space-between;gap:6px;color:var(--bi);
+    font-size:9.5px;letter-spacing:.06em;white-space:nowrap;overflow:hidden;
+  }
+  .bios-top span{opacity:.9;}
+  .bios-menu{
+    display:flex;justify-content:space-between;gap:4px;padding:5px 8px;
+    border:1px solid var(--bi-line);color:var(--bi);
+    font-size:11px;font-weight:600;letter-spacing:.08em;
+  }
+  .bios-menu span{opacity:.72;}
+  .bios-menu span.on{opacity:1;color:var(--bi-hot);text-shadow:0 0 8px rgba(124,255,217,.6);}
+
+  /* the two panels: log on the left, dithered art on the right */
+  .bios-main{display:flex;gap:5px;flex:1;min-height:0;}
+  .bios-log{
+    flex:1 1 0;min-width:0;overflow:hidden;
+    border:1px solid var(--bi-line);padding:5px 6px;
+    font-size:7.5px;line-height:1.42;color:var(--bi-dim);
+    white-space:pre;text-overflow:clip;
+  }
+  .bios-log b{color:var(--bi);font-weight:400;}
+  .bios-log i{color:var(--bi-hot);font-style:normal;}
+  .bios-log div{opacity:0;animation:biosLine .01s linear forwards;}
+  @keyframes biosLine{to{opacity:1;}}
+  /* the cover is the hero: a big square panel, never cropped to a sliver */
+  .bios-art{
+    position:relative;flex:0 0 auto;align-self:center;
+    height:min(43vh, calc(100vw - 16px));aspect-ratio:1;
+    border:1px solid var(--bi-line);overflow:hidden;
+  }
+  .bios-stats{
+    flex:0 0 auto;width:126px;overflow:hidden;
+    border:1px solid var(--bi-line);padding:5px 6px;
+    font-size:8px;line-height:1.5;color:var(--bi-dim);white-space:pre;
+  }
+  .bios-stats b{color:var(--bi);font-weight:400;}
+  #bios-canvas{display:block;width:100%;height:100%;}
+  .bios-artlab{
+    position:absolute;left:0;right:0;bottom:0;padding:2px 5px;
+    background:rgba(0,0,0,.72);color:var(--bi);font-size:8px;letter-spacing:.1em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+
+  /* memory-bank rows: the track name, repeated like a POST readout */
+  .bios-banks{display:flex;flex-direction:column;gap:3px;}
+  .bios-bank{display:flex;align-items:center;gap:7px;font-size:10px;color:var(--bi);}
+  .bios-bank b{flex:0 0 auto;font-weight:400;color:var(--bi-dim);letter-spacing:.08em;}
+  .bios-bank span{
+    flex:1;min-width:0;display:flex;gap:14px;overflow:hidden;white-space:nowrap;
+    color:var(--bi-hot);font-weight:600;letter-spacing:.04em;
+  }
+  .bios-bank span em{font-style:normal;flex:0 0 auto;}
+
+  /* progress + transport, drawn as BIOS widgets */
+  .bios-seek{
+    height:13px;border:1px solid var(--bi-line);position:relative;cursor:pointer;overflow:hidden;
+  }
+  .bios-fill{
+    position:absolute;inset:1px auto 1px 1px;width:0;
+    background:repeating-linear-gradient(90deg, var(--bi) 0 4px, transparent 4px 6px);
+    box-shadow:0 0 10px rgba(124,255,217,.45);
+  }
+  .bios-times{display:flex;justify-content:space-between;font-size:9.5px;color:var(--bi);letter-spacing:.06em;}
+  .bios-keys{display:flex;gap:5px;}
+  .bios-key{
+    flex:1;padding:9px 4px;border:1px solid var(--bi-line);background:transparent;
+    color:var(--bi);font:600 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.06em;
+    cursor:pointer;transition:background .12s, color .12s, box-shadow .12s;
+  }
+  .bios-key:active, .bios-key.on{background:var(--bi);color:#001a13;box-shadow:0 0 14px rgba(124,255,217,.5);}
+  .bios-foot{
+    font-size:8.5px;color:var(--bi-dim);letter-spacing:.14em;display:flex;justify-content:space-between;
+  }
+
+  /* phosphor scanlines over the whole screen */
+  #bios::after{
+    content:"";position:absolute;inset:0;z-index:5;pointer-events:none;
+    background:
+      repeating-linear-gradient(0deg, rgba(0,0,0,.34) 0 1px, transparent 1px 3px),
+      radial-gradient(88% 70% at 50% 45%, transparent 55%, rgba(0,0,0,.55) 100%);
+  }
+  @media (prefers-reduced-motion: reduce){ .bios-log div{animation:none;opacity:1;} }
+
+  /* =========================================================================
      SKINS PICKER — selectable cards in a sheet
      ========================================================================= */
   .skin-card{
@@ -1015,6 +1127,17 @@
     background-position:50% 62%, 50% 30%;
     background-repeat:no-repeat;
     box-shadow:inset 0 0 0 1px var(--line-2);
+  }
+  .skin-prev-bios{
+    background:#000;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(124,255,217,.5) 0 1px, transparent 1px 4px),
+      repeating-linear-gradient(90deg, #7cffd9 0 2px, transparent 2px 5px),
+      linear-gradient(#0c5f49, #0c5f49);
+    background-size:100% 100%, 62% 44%, 100% 9%;
+    background-position:0 0, 50% 58%, 0 14%;
+    background-repeat:repeat, no-repeat, no-repeat;
+    box-shadow:inset 0 0 0 1px var(--line-2), inset 0 0 20px rgba(124,255,217,.18);
   }
   .skin-meta{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
   .skin-name{font-family:var(--font-display);font-size:19px;color:var(--bone);line-height:1;}
@@ -1226,6 +1349,44 @@
  </div><!-- /crt -->
 </div>
 
+<!-- ============ BIOS SKIN ============ -->
+<div id="bios" aria-hidden="true">
+  <div class="bios-wrap">
+    <div class="bios-top">
+      <span>NOCTURNE BIOS (TM)</span><span class="bios-hide-s">COPYRIGHT (C) 2026</span><span>VER V1.03</span><span>PORT&hellip;3</span>
+    </div>
+    <div class="bios-menu">
+      <span class="on">SUMMARY</span><span>FIXED</span><span>BOOT</span><span>SEQ</span><span>MORE+</span>
+    </div>
+
+    <div class="bios-art">
+      <canvas id="bios-canvas"></canvas>
+      <div class="bios-artlab" id="bios-artlab">NO SIGNAL</div>
+    </div>
+    <div class="bios-main">
+      <div class="bios-log" id="bios-log"></div>
+      <div class="bios-stats" id="bios-stats"></div>
+    </div>
+
+    <div class="bios-banks">
+      <div class="bios-bank"><b>BANK 1</b><span id="bios-b1"></span></div>
+      <div class="bios-bank"><b>BANK 2</b><span id="bios-b2"></span></div>
+    </div>
+
+    <div class="bios-seek" id="bios-seek"><div class="bios-fill" id="bios-fill"></div></div>
+    <div class="bios-times">
+      <span id="bios-now">0:00</span><span id="bios-state">HALTED</span><span id="bios-end">0:00</span>
+    </div>
+
+    <div class="bios-keys">
+      <button class="bios-key" id="bios-prev" type="button">F1 &#9668;&#9668;</button>
+      <button class="bios-key" id="bios-play" type="button">F2 &#9658; PLAY</button>
+      <button class="bios-key" id="bios-next" type="button">F3 &#9658;&#9658;</button>
+    </div>
+    <div class="bios-foot"><span>NOCTURNE</span><span id="bios-foot-r">MEM OK</span></div>
+  </div>
+</div>
+
 <!-- ============ SHEETS ============ -->
 <div id="scrim"></div>
 
@@ -1279,6 +1440,11 @@
     <button class="skin-card stagger-in" data-skin="retro" type="button">
       <span class="skin-prev skin-prev-retro"></span>
       <span class="skin-meta"><span class="skin-name">Retro 95</span><span class="skin-desc">A Windows-95 desktop — the player lives in a beveled window, with clickable shortcuts.</span></span>
+      <span class="skin-check">✓</span>
+    </button>
+    <button class="skin-card stagger-in" data-skin="bios" type="button">
+      <span class="skin-prev skin-prev-bios"></span>
+      <span class="skin-meta"><span class="skin-name">BIOS</span><span class="skin-desc">A boot-screen readout in phosphor mint — the album art redrawn as a particle dither.</span></span>
       <span class="skin-check">✓</span>
     </button>
   </div>
@@ -2187,6 +2353,7 @@ function paint(){
   $('t-end').textContent = fmt(st.dur);
   $('seek').setAttribute('aria-valuenow', Math.round(pct));
   if(typeof retroSync === 'function') retroSync();
+  if(typeof biosSync  === 'function') biosSync();
 }
 function tick(){
   if(st.playing && !st.seeking) st.pos = Math.min(st.pos + 250, st.dur);
@@ -3169,7 +3336,8 @@ function renderLists(){
    SKIN — two skins now: 'aura' (the warp) and 'retro' (the Windows-95
    desktop). applyLook pins the stored skin; setSkin switches + persists.
    ========================================================================= */
-function getSkin(){ return localStorage.getItem('nc_skin') === 'retro' ? 'retro' : 'aura'; }
+const SKINS = ['aura','retro','bios'];
+function getSkin(){ const s = localStorage.getItem('nc_skin'); return SKINS.includes(s) ? s : 'aura'; }
 function markSkinCards(){
   const s = getSkin();
   document.querySelectorAll('.skin-card').forEach(c => c.classList.toggle('active', c.dataset.skin === s));
@@ -3178,7 +3346,10 @@ function applyLook(){
   const s = getSkin();
   document.body.dataset.skin = s;
   markSkinCards();
+  // only the visible skin animates — the others stop dead
+  if(s !== 'bios') { try{ BIOS.stop(); }catch(e){} }
   if(s === 'retro'){ retroSync(); if(window.retroShowWin) window.retroShowWin(); }
+  else if(s === 'bios'){ biosSync(); setTimeout(() => { try{ BIOS.start(); }catch(e){} }, 20); }
   else { setTimeout(() => { try{ AU.resize(); }catch(e){} }, 20); }
 }
 function setSkin(s){
@@ -3401,6 +3572,327 @@ document.querySelectorAll('.skin-card').forEach(card => {
 function retroSync(){ if(window.retroSync) window.retroSync(); }
 
 /* =========================================================================
+   BIOS — a POST screen. The album art is resampled onto a coarse grid and
+   redrawn as vertical phosphor bars, so it reads as a particle dither rather
+   than a photo. The expensive part (building the dither) happens once per
+   track into an offscreen canvas; the frame loop only blits that and draws a
+   handful of moving overlays, so it stays cheap.
+   ========================================================================= */
+const BIOS = (function(){
+  const CELL = 3.6;                        // css px per cell — grid coarseness
+  let cv, ctx, off, octx, wrap;
+  let w = 0, h = 0, dpr = 1, cols = 0, rows = 0;
+  let lum = null;                          // Float32Array cols*rows, 0..1
+  let running = false, raf = 0, t0 = 0, lastUrl = '';
+  const motes = [];                        // drifting phosphor specks
+
+  function init(){
+    if(cv) return true;
+    cv = $('bios-canvas'); if(!cv) return false;
+    wrap = cv.parentElement;
+    ctx = cv.getContext('2d');
+    off = document.createElement('canvas');
+    octx = off.getContext('2d');
+    return true;
+  }
+
+  function resize(){
+    if(!init()) return;
+    const r = wrap.getBoundingClientRect();
+    if(r.width < 2 || r.height < 2) return;             // still hidden
+    dpr = Math.min(devicePixelRatio || 1, 2);
+    w = r.width; h = r.height;
+    cv.width  = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    off.width = cv.width;            off.height = cv.height;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    octx.setTransform(dpr,0,0,dpr,0,0);
+    cols = Math.max(8, Math.floor(w / CELL));
+    rows = Math.max(8, Math.floor(h / CELL));
+    motes.length = 0;
+    for(let i = 0; i < 26; i++) motes.push(mote(Math.random()));
+    if(lastUrl) sample(lastUrl, true); else { lum = null; paintOff(); }
+  }
+
+  const mote = seed => ({ x: Math.random()*w, y: Math.random()*h, v: 6 + Math.random()*16, a: seed });
+
+  /* ---- read the album art onto the grid ---- */
+  function sample(url, force){
+    if(!init()) return;
+    if(url === lastUrl && !force) return;
+    lastUrl = url;
+    if(!url){ lum = null; paintOff(); return; }
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      if(url !== lastUrl) return;                       // a newer track won
+      try{
+        const s = document.createElement('canvas');
+        s.width = cols; s.height = rows;
+        const sc = s.getContext('2d', { willReadFrequently:true });
+        // cover-crop the square art onto the panel's grid
+        const ar = img.width / img.height, gr = cols / rows;
+        let sw = img.width, sh = img.height, sx = 0, sy = 0;
+        if(ar > gr){ sw = img.height * gr; sx = (img.width - sw) / 2; }
+        else       { sh = img.width / gr;  sy = (img.height - sh) / 2; }
+        sc.drawImage(img, sx, sy, sw, sh, 0, 0, cols, rows);
+        const px = sc.getImageData(0, 0, cols, rows).data;
+        const out = new Float32Array(cols * rows);
+        for(let i = 0, p = 0; i < out.length; i++, p += 4){
+          out[i] = (px[p]*0.299 + px[p+1]*0.587 + px[p+2]*0.114) / 255;
+        }
+        // stretch to the 3rd/97th percentile, not the extremes — a single
+        // blown highlight would otherwise flatten the whole cover
+        const sorted = Float32Array.from(out).sort();
+        const lo = sorted[Math.floor(sorted.length * 0.03)];
+        const hi = sorted[Math.floor(sorted.length * 0.97)];
+        const span = Math.max(0.08, hi - lo);
+        for(let i = 0; i < out.length; i++){
+          out[i] = Math.max(0, Math.min(1, (out[i] - lo) / span));
+        }
+        lum = out;
+      }catch(e){ lum = null; }                          // tainted canvas — fall back to static
+      paintOff();
+    };
+    img.onerror = () => { if(url === lastUrl){ lum = null; paintOff(); } };
+    img.src = url;
+  }
+
+  /* ---- draw the dither once, into the offscreen ---- */
+  // Ordered (Bayer) dither. Nudging each cell by its position in the matrix
+  // breaks flat mid-tones into a speckle instead of solid slabs — that
+  // speckle is what makes it read as particles rather than a photo.
+  const BAYER = [0,8,2,10, 12,4,14,6, 3,11,1,9, 15,7,13,5];
+  // phosphor steps, darkest first so bright cells are drawn over dim ones
+  const BANDS = [
+    { min:.14, max:.34, col:'#0d6249' },
+    { min:.34, max:.56, col:'#159a76' },
+    { min:.56, max:.80, col:'#3ad9a8' },
+    { min:.80, max:1.01, col:'#c9fff0' },
+  ];
+  function paintOff(){
+    if(!octx) return;
+    octx.fillStyle = '#000';
+    octx.fillRect(0, 0, w, h);
+    const cw = w / cols, ch = h / rows;
+    const bw = Math.max(1, cw * 0.44);                  // narrow: reads as strokes, not blocks
+    if(!lum){                                           // no art yet — phosphor static
+      octx.fillStyle = '#0d6249';
+      for(let i = 0; i < cols * rows * 0.16; i++){
+        const x = Math.floor(Math.random()*cols)*cw, y = Math.floor(Math.random()*rows)*ch;
+        octx.fillRect(x + (cw-bw)/2, y + ch*0.3, bw, ch*0.4);
+      }
+      return;
+    }
+    for(const b of BANDS){
+      octx.fillStyle = b.col;
+      for(let gy = 0; gy < rows; gy++){
+        for(let gx = 0; gx < cols; gx++){
+          const d = (BAYER[(gy & 3) * 4 + (gx & 3)] + 0.5) / 16 - 0.5;
+          const v = lum[gy*cols + gx] + d * 0.30;
+          if(v < b.min || v >= b.max) continue;
+          // height tracks the tone continuously, so gradients stay readable;
+          // bright cells overrun their cell and join into vertical strokes
+          const bh = Math.max(1, ch * (0.3 + 0.95 * Math.min(1, v)));
+          octx.fillRect(gx*cw + (cw-bw)/2, gy*ch + (ch-bh)/2, bw, bh);
+        }
+      }
+    }
+  }
+
+  /* ---- per-frame overlays: scan sweep, drifting motes, rare glitch rows ---- */
+  function frame(now){
+    if(!running) return;
+    raf = requestAnimationFrame(frame);
+    if(!w || !h) return;
+    const t = (now - t0) / 1000;
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(off, 0, 0, w, h);
+
+    // a soft band travelling down the panel, like a refresh sweep
+    const bandY = ((t * 0.22) % 1.35 - 0.2) * h, bandH = h * 0.16;
+    const g = ctx.createLinearGradient(0, bandY, 0, bandY + bandH);
+    g.addColorStop(0,   'rgba(124,255,217,0)');
+    g.addColorStop(0.5, 'rgba(124,255,217,.11)');
+    g.addColorStop(1,   'rgba(124,255,217,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, bandY, w, bandH);
+
+    // phosphor specks drifting upward
+    ctx.fillStyle = 'rgba(180,255,232,.5)';
+    for(const m of motes){
+      m.y -= m.v * 0.016;
+      if(m.y < -2){ m.y = h + 2; m.x = Math.random()*w; }
+      const tw = 0.5 + 0.5*Math.sin(t*3 + m.a*9);
+      ctx.globalAlpha = 0.18 + tw*0.5;
+      ctx.fillRect(m.x, m.y, 1.5, 1.5);
+    }
+    ctx.globalAlpha = 1;
+
+    // every so often, tear a couple of rows sideways
+    if(lum && Math.random() < 0.035){
+      for(let i = 0; i < 2; i++){
+        const y = Math.random()*h, sh = 2 + Math.random()*7, dx = (Math.random()-0.5)*14;
+        ctx.drawImage(off, 0, y*dpr, off.width, sh*dpr, dx, y, w, sh);
+      }
+    }
+  }
+
+  function start(){
+    if(!init()) return;
+    resize();
+    if(running) return;
+    running = true; t0 = performance.now();
+    raf = requestAnimationFrame(frame);
+  }
+  function stop(){ running = false; cancelAnimationFrame(raf); }
+
+  return { start, stop, resize, sample, get on(){ return running; } };
+})();
+
+/* the POST log — rebuilt on track change, revealed a line at a time */
+function biosLog(track, artist, album, durMs){
+  const el = $('bios-log'); if(!el) return;
+  const up = (s, n) => String(s || '').toUpperCase().slice(0, n || 26) || '-';
+  const kb = Math.max(64, Math.round((durMs || 0) / 1000) * 16);
+  const lines = [
+    'ECHO OFF',
+    'TITLE NOCTURNE BIOS',
+    'MODE CON: COLS=80 LINES=30',
+    'COLOR 0A',
+    'CLS',
+    ':: BIOS BOOT SCREEN',
+    'ECHO',
+    'ECHO  AWARD MODULAR BIOS V6.00PG',
+    'ECHO  COPYRIGHT (C) 1984-2026',
+    'ECHO  NOCTURNE SOFTWARE, INC',
+    'ECHO',
+    'ECHO  MAIN PROCESSOR   : <b>' + up(artist) + '</b>',
+    'ECHO  MEMORY TESTING   : ' + kb + 'K OK',
+    'ECHO',
+    'ECHO  DETECTING IDE PRIMARY MASTER',
+    'ECHO   ... <b>' + up(album) + '</b>',
+    'ECHO  DETECTING IDE PRIMARY SLAVE',
+    'ECHO   ... NONE',
+    'ECHO  DETECTING AUDIO BUS',
+    'ECHO   ... <i>' + up(track, 24) + '</i>',
+    'ECHO',
+    'ECHO  [1] STANDARD CMOS FEATURES',
+    'ECHO  [2] ADVANCED BIOS FEATURES',
+    'ECHO  [3] INTEGRATED PERIPHERALS',
+    'ECHO  [4] POWER MANAGEMENT SETUP',
+    'ECHO  [5] PNP/PCI CONFIGURATIONS',
+    'ECHO  [6] PC HEALTH STATUS',
+    'ECHO  [7] AUDIO OUTPUT',
+    'ECHO  [8] EXIT SETUP',
+    'ECHO',
+    'SET /P CHOICE=YOUR SELECTION [1-8]',
+    'IF "%CHOICE%" == "1" GOTO CMOS',
+    'IF "%CHOICE%" == "7" GOTO AUDIO',
+    'IF "%CHOICE%" == "8" GOTO EXIT',
+    'ECHO',
+    ':AUDIO',
+    'ECHO  BUS SPEED    : 44.1 KHZ',
+    'ECHO  RESOLUTION   : 16 BIT',
+    'ECHO  CHANNELS     : 2 (STEREO)',
+    'ECHO  STREAM       : OK',
+    'ECHO',
+    'PING -N 3 127.0.0.1 > NUL',
+    'GOTO MENU',
+    'ECHO',
+    ':CMOS',
+    'ECHO  DATE (MM:DD:YY)  : ' + new Date().toISOString().slice(0,10),
+    'ECHO  HALT ON          : NO ERRORS',
+    'ECHO  BASE MEMORY      : 640K',
+    'ECHO  EXTENDED MEMORY  : ' + kb + 'K',
+    'ECHO  TOTAL MEMORY     : ' + (kb + 640) + 'K',
+    'ECHO',
+    'ECHO  PRESS F1 TO REWIND',
+    'ECHO  PRESS F2 TO TOGGLE',
+    'ECHO  PRESS F3 TO ADVANCE',
+    'ECHO',
+    'ECHO  NO BOOTABLE MEDIA FOUND',
+    'ECHO  FALLING BACK TO AUDIO BUS',
+    'ECHO  STREAM LOCKED. ENJOY.',
+    'ECHO',
+    'GOTO MENU',
+  ];
+  el.innerHTML = lines.map((l, i) =>
+    '<div style="animation-delay:' + (i * 14) + 'ms">' + l + '</div>').join('');
+}
+
+function biosSync(){
+  if(document.body.dataset.skin !== 'bios') return;
+  const track = $('title').textContent, artist = $('artist').textContent;
+  const album = ($('ab-album') && $('ab-album').textContent) || '';
+
+  if($('bios-log').dataset.id !== (st.id || '')){         // new track — rebuild the readout
+    $('bios-log').dataset.id = st.id || '';
+    biosLog(track, artist, album, st.dur);
+  }
+
+  BIOS.sample($('art').getAttribute('data-src') || '');
+  $('bios-artlab').textContent = st.id ? (artist + ' / ' + track).toUpperCase().slice(0, 40) : 'NO SIGNAL';
+
+  const name = (track || 'NO MEDIA').toUpperCase();
+  const b1 = $('bios-b1'), b2 = $('bios-b2');
+  if(b1.dataset.n !== name){
+    b1.dataset.n = name;
+    const cells = Array.from({length:3}, () => '<em>' + esc(name.slice(0, 14)) + '</em>').join('');
+    b1.innerHTML = cells;
+    b2.innerHTML = cells;
+  }
+
+  const stats = [
+    'BANK 0 : 1024 DDR',
+    'PING LOCALHOST>NUL',
+    'SR   : 44.1KHZ/16B',
+    'CHAN : 2 (STEREO)',
+    'POS  : <b>' + $('t-now').textContent + '</b>/' + $('t-end').textContent,
+    'STATE: <b>' + (!st.id ? 'HALTED' : st.playing ? 'RUNNING' : 'PAUSED') + '</b>',
+    'TEST1: WRITE/READ..',
+  ].join('\n');
+  if($('bios-stats').dataset.s !== stats){
+    $('bios-stats').dataset.s = stats;
+    $('bios-stats').innerHTML = stats;
+  }
+
+  $('bios-fill').style.width = $('fill').style.width;
+  $('bios-now').textContent = $('t-now').textContent;
+  $('bios-end').textContent = $('t-end').textContent;
+  $('bios-state').textContent = !st.id ? 'HALTED' : (st.playing ? 'RUNNING' : 'PAUSED');
+  const play = $('bios-play');
+  if(play.dataset.p !== String(st.playing)){
+    play.dataset.p = String(st.playing);
+    play.innerHTML = st.playing ? 'F2 &#10074;&#10074; STOP' : 'F2 &#9658; PLAY';
+  }
+  play.classList.toggle('on', !!st.playing);
+  $('bios-foot-r').textContent = st.id ? 'MEM OK' : 'NO MEDIA';
+}
+
+(function BIOSWIRE(){
+  const fwd = (id, target) => { const el = $(id); if(el) el.onclick = () => $(target).click(); };
+  fwd('bios-prev', 'btn-prev');
+  fwd('bios-play', 'btn-play');
+  fwd('bios-next', 'btn-next');
+
+  const seek = $('bios-seek');
+  if(seek) seek.addEventListener('pointerdown', async e => {
+    if(!st.dur) return;
+    const r = seek.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+    const ms = Math.round(frac * st.dur);
+    st.pos = ms; st.seeking = true;
+    $('bios-fill').style.width = (frac * 100) + '%';
+    await control('/me/player/seek?position_ms=' + ms, { method:'PUT' });
+    st.seeking = false;
+    setTimeout(poll, 300);
+  });
+
+  addEventListener('resize', () => { if(document.body.dataset.skin === 'bios') BIOS.resize(); });
+})();
+
+/* =========================================================================
    PREMIUM — ambient depth + microinteractions. Additive polish only; every
    effect is GPU-friendly (transform/opacity), pointer effects are desktop-
    only, and all of it is skipped under prefers-reduced-motion.
@@ -3545,7 +4037,7 @@ function enterApp(){
   // brief version stamp so we can confirm the latest file actually loaded
   (function(){
     const v = document.createElement('div');
-    v.textContent = 'build v15';
+    v.textContent = 'build v16';
     v.style.cssText = 'position:fixed;right:8px;top:calc(var(--safe-t) + 4px);z-index:99;'+
       'font:9px monospace;color:#4C7BFF;opacity:.7;pointer-events:none;';
     document.body.appendChild(v);
