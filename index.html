@@ -3579,12 +3579,16 @@ function retroSync(){ if(window.retroSync) window.retroSync(); }
    handful of moving overlays, so it stays cheap.
    ========================================================================= */
 const BIOS = (function(){
-  const CELL = 3.6;                        // css px per cell — grid coarseness
-  let cv, ctx, off, octx, wrap;
-  let w = 0, h = 0, dpr = 1, cols = 0, rows = 0;
+  const TARGET_COLS = 150;                 // grid width — higher means finer particles
+  const MIN_CELL = 2.2;                    // …but never below this, or it turns to mush
+  const TRANS_MS = 850;                    // length of the track-change rebuild
+  let cv, ctx, off, octx, pre, pctx, wrap;
+  let w = 0, h = 0, dpr = 1, cols = 0, rows = 0, cell = 3;
   let lum = null;                          // Float32Array cols*rows, 0..1
   let running = false, raf = 0, t0 = 0, lastUrl = '';
-  const motes = [];                        // drifting phosphor specks
+  let transT0 = 0, transing = false, hasArt = false;
+  const motes = [];                        // ambient drifting phosphor specks
+  const sparks = [];                       // transient specks thrown off the read head
 
   function init(){
     if(cv) return true;
@@ -3593,6 +3597,8 @@ const BIOS = (function(){
     ctx = cv.getContext('2d');
     off = document.createElement('canvas');
     octx = off.getContext('2d');
+    pre = document.createElement('canvas');   // the outgoing image, held for the wipe
+    pctx = pre.getContext('2d');
     return true;
   }
 
@@ -3604,19 +3610,23 @@ const BIOS = (function(){
     w = r.width; h = r.height;
     cv.width  = Math.round(w * dpr); cv.height = Math.round(h * dpr);
     off.width = cv.width;            off.height = cv.height;
+    pre.width = cv.width;            pre.height = cv.height;
     ctx.setTransform(dpr,0,0,dpr,0,0);
     octx.setTransform(dpr,0,0,dpr,0,0);
-    cols = Math.max(8, Math.floor(w / CELL));
-    rows = Math.max(8, Math.floor(h / CELL));
+    pctx.setTransform(dpr,0,0,dpr,0,0);
+    cell = Math.max(MIN_CELL, w / TARGET_COLS);
+    cols = Math.max(8, Math.floor(w / cell));
+    rows = Math.max(8, Math.floor(h / cell));
+    transing = false; sparks.length = 0;
     motes.length = 0;
     for(let i = 0; i < 26; i++) motes.push(mote(Math.random()));
-    if(lastUrl) sample(lastUrl, true); else { lum = null; paintOff(); }
+    if(lastUrl) sample(lastUrl, true, true); else { lum = null; paintOff(); }
   }
 
   const mote = seed => ({ x: Math.random()*w, y: Math.random()*h, v: 6 + Math.random()*16, a: seed });
 
   /* ---- read the album art onto the grid ---- */
-  function sample(url, force){
+  function sample(url, force, quiet){
     if(!init()) return;
     if(url === lastUrl && !force) return;
     lastUrl = url;
@@ -3651,10 +3661,36 @@ const BIOS = (function(){
         }
         lum = out;
       }catch(e){ lum = null; }                          // tainted canvas — fall back to static
-      paintOff();
+      swapTo(quiet);
     };
-    img.onerror = () => { if(url === lastUrl){ lum = null; paintOff(); } };
+    img.onerror = () => { if(url === lastUrl){ lum = null; swapTo(quiet); } };
     img.src = url;
+  }
+
+  /* keep the outgoing picture, draw the new one, then wipe between them */
+  function swapTo(quiet){
+    if(quiet){ paintOff(); return; }                    // a resize shouldn't look like a track change
+    pctx.clearRect(0, 0, w, h);
+    pctx.drawImage(off, 0, 0, w, h);                    // stash what's on screen now
+    paintOff();
+    transT0 = performance.now();
+    transing = true;
+    sparks.length = 0;
+    hasArt = !!lum;
+  }
+
+  // specks thrown sideways off the read head as it passes
+  function spawnSparks(y, n){
+    for(let i = 0; i < n && sparks.length < 130; i++){
+      sparks.push({
+        x: Math.random() * w,
+        y: y + (Math.random() - 0.5) * 5,
+        vx: (Math.random() - 0.5) * 90,
+        vy: (Math.random() - 0.5) * 46 - 10,
+        life: 0.42 + Math.random() * 0.5,
+        age: 0,
+      });
+    }
   }
 
   /* ---- draw the dither once, into the offscreen ---- */
@@ -3674,7 +3710,7 @@ const BIOS = (function(){
     octx.fillStyle = '#000';
     octx.fillRect(0, 0, w, h);
     const cw = w / cols, ch = h / rows;
-    const bw = Math.max(1, cw * 0.44);                  // narrow: reads as strokes, not blocks
+    const bw = Math.max(1, cw * 0.5);                   // narrow: reads as strokes, not blocks
     if(!lum){                                           // no art yet — phosphor static
       octx.fillStyle = '#0d6249';
       for(let i = 0; i < cols * rows * 0.16; i++){
@@ -3705,9 +3741,67 @@ const BIOS = (function(){
     raf = requestAnimationFrame(frame);
     if(!w || !h) return;
     const t = (now - t0) / 1000;
+    const dt = Math.min(0.05, (now - (frame.last || now)) / 1000);
+    frame.last = now;
 
     ctx.clearRect(0, 0, w, h);
-    ctx.drawImage(off, 0, 0, w, h);
+
+    if(transing){
+      // A read head sweeps down. Above it the new dither has been "written",
+      // below it the old one is still standing — with a band of static and a
+      // spray of specks right at the head.
+      const p = (now - transT0) / TRANS_MS;
+      if(p >= 1){ transing = false; }
+      const e = Math.min(1, Math.max(0, p));
+      const headY = e * (h + 24) - 12;
+
+      ctx.drawImage(pre, 0, 0, w, h);                   // outgoing, everywhere
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, 0, w, Math.max(0, headY)); ctx.clip();
+      ctx.drawImage(off, 0, 0, w, h);                   // incoming, above the head
+      ctx.restore();
+
+      if(transing){
+        // torn rows just behind the head, as if the scan hasn't settled
+        for(let i = 0; i < 3; i++){
+          const y = headY - Math.random() * 26;
+          if(y < 0) continue;
+          const sh = 1 + Math.random() * 4, dx = (Math.random() - 0.5) * 26;
+          ctx.drawImage(off, 0, y * dpr, off.width, sh * dpr, dx, y, w, sh);
+        }
+        // static ahead of the head
+        ctx.fillStyle = 'rgba(124,255,217,.5)';
+        for(let i = 0; i < 46; i++){
+          const y = headY + Math.random() * 16;
+          ctx.fillRect(Math.random() * w, y, 1 + Math.random() * 2.5, 1.4);
+        }
+        // the head itself
+        const hg = ctx.createLinearGradient(0, headY - 10, 0, headY + 3);
+        hg.addColorStop(0, 'rgba(124,255,217,0)');
+        hg.addColorStop(1, 'rgba(201,255,240,.55)');
+        ctx.fillStyle = hg;
+        ctx.fillRect(0, headY - 10, w, 13);
+        ctx.fillStyle = 'rgba(230,255,248,.85)';
+        ctx.fillRect(0, headY, w, 1.2);
+        spawnSparks(headY, 4);
+      }
+    }else{
+      ctx.drawImage(off, 0, 0, w, h);
+    }
+
+    // specks flung off the head, coasting and fading
+    if(sparks.length){
+      for(let i = sparks.length - 1; i >= 0; i--){
+        const s = sparks[i];
+        s.age += dt;
+        if(s.age >= s.life){ sparks.splice(i, 1); continue; }
+        s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 42 * dt;
+        ctx.globalAlpha = (1 - s.age / s.life) * 0.85;
+        ctx.fillStyle = '#c9fff0';
+        ctx.fillRect(s.x, s.y, 1.6, 1.6);
+      }
+      ctx.globalAlpha = 1;
+    }
 
     // a soft band travelling down the panel, like a refresh sweep
     const bandY = ((t * 0.22) % 1.35 - 0.2) * h, bandH = h * 0.16;
@@ -3729,8 +3823,8 @@ const BIOS = (function(){
     }
     ctx.globalAlpha = 1;
 
-    // every so often, tear a couple of rows sideways
-    if(lum && Math.random() < 0.035){
+    // every so often, tear a couple of rows sideways (the rebuild does its own)
+    if(lum && !transing && Math.random() < 0.035){
       for(let i = 0; i < 2; i++){
         const y = Math.random()*h, sh = 2 + Math.random()*7, dx = (Math.random()-0.5)*14;
         ctx.drawImage(off, 0, y*dpr, off.width, sh*dpr, dx, y, w, sh);
@@ -3747,7 +3841,8 @@ const BIOS = (function(){
   }
   function stop(){ running = false; cancelAnimationFrame(raf); }
 
-  return { start, stop, resize, sample, get on(){ return running; } };
+  const stats = () => ({ cols, rows, cell: +cell.toFixed(2), transing, sparks: sparks.length, art: !!lum });
+  return { start, stop, resize, sample, stats, get on(){ return running; } };
 })();
 
 /* the POST log — rebuilt on track change, revealed a line at a time */
