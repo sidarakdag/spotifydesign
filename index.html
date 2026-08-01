@@ -893,6 +893,30 @@
   /* ---- folder window (Playlists) ---- */
   /* the folder sits low, leaving the player's title bar peeking above */
   .rfolder{width:min(360px, calc(100vw - 22px));top:66%;left:51%;}
+  .rskins{width:min(320px, calc(100vw - 26px));top:64%;left:49%;}
+  .rwin-folder-sk{background:linear-gradient(#b9a6f5,#cfc0ff);box-shadow:0 0 0 1px #40307a;}
+  .rwin-folder-sk::before{background:#b9a6f5;box-shadow:0 0 0 1px #40307a;}
+  /* a swatch standing in for each skin's look */
+  .fi-sw{width:20px;height:20px;flex:0 0 auto;box-shadow:0 0 0 1px #7a7d88;}
+  .fi-sw-aura{background:radial-gradient(circle at 50% 42%, #dfe7ff, #6f8dff 42%, #241a4a 100%);}
+  .fi-sw-retro{background:linear-gradient(#000082 0 38%, #c0c0c0 38% 100%);}
+  .fi-sw-bios{background:#000;background-image:repeating-linear-gradient(0deg,#3ad9a8 0 1px,transparent 1px 3px);}
+
+  /* ---- lyrics window ---- */
+  .rlyrics{width:min(330px, calc(100vw - 30px));top:58%;left:52%;}
+  .rly-body{
+    background:#000;margin:6px;height:min(38vh, 260px);overflow-y:auto;padding:6px 8px;
+    font:12px/1.55 'Tahoma',sans-serif;color:#43e0a8;
+    box-shadow:inset 1px 1px #808080, inset -1px -1px #fff, inset 2px 2px #000;
+  }
+  .rly-body .rl{padding:1px 3px;opacity:.42;transition:opacity .18s, background .18s, color .18s;}
+  .rly-body .rl.cur{opacity:1;background:#000080;color:#fff;font-weight:bold;}
+  .rly-body .rl.past{opacity:.26;}
+  .rly-note{padding:14px 8px;text-align:center;color:#8a8f98;font-size:12px;}
+  .rly-body::-webkit-scrollbar{width:16px;}
+  .rly-body::-webkit-scrollbar-track{background:#dfdfdf;}
+  .rly-body::-webkit-scrollbar-thumb{background:#c0c0c0;box-shadow:inset -1px -1px #000, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;}
+  .rbtn-ly{min-width:0;flex:1;font-size:11px;letter-spacing:.02em;}
   .rwin-folder-ic{position:relative;display:inline-block;width:15px;height:12px;flex:0 0 auto;
     background:linear-gradient(#ffcf46,#ffdf72);box-shadow:0 0 0 1px #7a5c00;border-radius:0 2px 2px 2px;margin-top:2px;}
   .rwin-folder-ic::before{content:"";position:absolute;left:0;top:-3px;width:7px;height:3px;
@@ -1319,6 +1343,9 @@
     <button class="rd-icon" id="rd-playlists" type="button">
       <svg class="ico" viewBox="0 0 32 32"><path d="M3 9h8l2.5 3H29v3H3z" fill="#e0a91d" stroke="#8a6600" stroke-width="1"/><path d="M3 12h26v14H3z" fill="#ffcf46" stroke="#8a6600" stroke-width="1"/><path d="M3 12h26l-2 14H5z" fill="#ffdf72" stroke="#8a6600" stroke-width="1"/><path d="M18 15v6.2a2.3 2 0 1 1-1.4-1.9V16l4-1v4.7a2.3 2 0 1 1-1.4-1.9V14z" fill="#5a3d00"/></svg>
       <span>Playlists</span></button>
+    <button class="rd-icon" id="rd-skins" type="button">
+      <svg class="ico" viewBox="0 0 32 32"><path d="M3 9h8l2.5 3H29v3H3z" fill="#8f7ad6" stroke="#40307a" stroke-width="1"/><path d="M3 12h26v14H3z" fill="#b9a6f5" stroke="#40307a" stroke-width="1"/><path d="M3 12h26l-2 14H5z" fill="#cfc0ff" stroke="#40307a" stroke-width="1"/><circle cx="12" cy="19" r="3.4" fill="#ffd45e" stroke="#6a4b00" stroke-width=".8"/><circle cx="20" cy="19" r="3.4" fill="#5ad6c8" stroke="#0d5a54" stroke-width=".8"/></svg>
+      <span>Skins</span></button>
   </div>
 
   <div class="rwin" id="rwin">
@@ -1343,6 +1370,7 @@
           <button class="rbtn" id="r-prev" type="button" title="Previous">◄◄</button>
           <button class="rbtn rbtn-play" id="r-play" type="button" title="Play / Pause">►</button>
           <button class="rbtn" id="r-next" type="button" title="Next">►►</button>
+          <button class="rbtn rbtn-ly" id="r-lyrics" type="button" title="Lyrics">Lyrics</button>
         </div>
       </div>
     </div>
@@ -1365,6 +1393,36 @@
   </div>
 
 
+  <div class="rwin rfolder rskins min" id="rskins">
+    <div class="rwin-titlebar">
+      <span class="rwin-ticon rwin-folder-ic rwin-folder-sk"></span>
+      <span class="rwin-tname">Skins</span>
+      <span class="rwin-tbtns">
+        <button class="rwin-b" id="rskins-min" type="button" aria-label="Minimize">_</button>
+        <button class="rwin-b" id="rskins-max" type="button" aria-label="Maximize">▢</button>
+        <button class="rwin-b" id="rskins-close" type="button" aria-label="Close">×</button>
+      </span>
+    </div>
+    <div class="rwin-menu"><span><u>F</u>ile</span><span><u>E</u>dit</span><span><u>V</u>iew</span><span><u>H</u>elp</span></div>
+    <div class="rfolder-body" id="rskins-body"></div>
+    <div class="rwin-status"><span class="rwin-stat">3 object(s)</span><span class="rwin-stat rwin-stat2">Skins</span></div>
+  </div>
+
+  <div class="rwin rlyrics min" id="rlyrics">
+    <div class="rwin-titlebar">
+      <span class="rwin-ticon">♪</span>
+      <span class="rwin-tname">Lyrics&nbsp;&mdash;&nbsp;<span id="rly-track">Media Player</span></span>
+      <span class="rwin-tbtns">
+        <button class="rwin-b" id="rly-min" type="button" aria-label="Minimize">_</button>
+        <button class="rwin-b" id="rly-max" type="button" aria-label="Maximize">▢</button>
+        <button class="rwin-b" id="rly-close" type="button" aria-label="Close">×</button>
+      </span>
+    </div>
+    <div class="rwin-menu"><span><u>F</u>ile</span><span><u>E</u>dit</span><span><u>V</u>iew</span><span><u>H</u>elp</span></div>
+    <div class="rly-body" id="rly-body"></div>
+    <div class="rwin-status"><span class="rwin-stat" id="rly-stat">Ready</span><span class="rwin-stat rwin-stat2">LRCLIB</span></div>
+  </div>
+
   <div class="taskbar">
     <button class="tb-start" id="tb-start" type="button"><span class="tb-logo"></span>Start</button>
     <button class="tb-task" id="tb-task" type="button"><span class="rwin-ticon">♪</span>&nbsp;Nocturne</button>
@@ -1374,7 +1432,7 @@
   <div class="rstart" id="rstart">
     <div class="rstart-side">Nocturne&nbsp;95</div>
     <div class="rstart-items">
-      <button class="rstart-item" id="rs-aura" type="button"><span class="rstart-i">✦</span> Switch to Aura</button>
+      <button class="rstart-item" id="rs-skins" type="button"><span class="rstart-i">✦</span> Skins</button>
       <a class="rstart-item" href="https://www.minecraft.net" target="_blank" rel="noopener"><span class="rstart-i">▦</span> Minecraft</a>
       <a class="rstart-item" href="https://open.spotify.com" target="_blank" rel="noopener"><span class="rstart-i">♫</span> Spotify.com</a>
       <div class="rstart-sep"></div>
@@ -3571,6 +3629,85 @@ document.querySelectorAll('.skin-card').forEach(card => {
     $('rfolder-count').textContent = PLAYLISTS.length + ' object(s)';
   }
 
+  /* ---- Skins folder ---- */
+  const skinsWin = $('rskins');
+  makeDraggable(skinsWin);
+  function showSkins(){ openWin(skinsWin); renderSkins(); }
+  $('rskins-close').onclick = () => closeWin(skinsWin);
+  $('rskins-min').onclick   = () => closeWin(skinsWin);
+  $('rskins-max').onclick   = showSkins;
+  $('rd-skins').onclick     = showSkins;
+
+  function renderSkins(){
+    const body = $('rskins-body'), cur = getSkin();
+    body.innerHTML = '';
+    [['aura','Aura','Warp field'],
+     ['retro','Retro 95','This desktop'],
+     ['bios','BIOS','Boot screen']].forEach(([id, name, note]) => {
+      const row = document.createElement('button');
+      row.className = 'rfolder-item' + (id === cur ? ' playing' : '');
+      row.type = 'button';
+      row.innerHTML = '<span class="fi-sw fi-sw-' + id + '"></span>' +
+                      '<span class="fi-name">' + name + '</span>' +
+                      '<span class="fi-sub">' + note + '</span>';
+      row.onclick = () => { if(id !== cur) setSkin(id); else renderSkins(); };
+      body.appendChild(row);
+    });
+  }
+
+  /* ---- lyrics window, opened from the player ---- */
+  const lyWin = $('rlyrics');
+  makeDraggable(lyWin);
+  function showLyrics(){ openWin(lyWin); renderRetroLyrics(true); }
+  $('rly-close').onclick = () => closeWin(lyWin);
+  $('rly-min').onclick   = () => closeWin(lyWin);
+  $('rly-max').onclick   = showLyrics;
+  $('r-lyrics').onclick  = showLyrics;
+
+  // the whole lyric sheet, with the line currently playing picked out
+  let rlyKey = '', rlyIdx = -2;
+  function renderRetroLyrics(force){
+    if(lyWin.classList.contains('min')) return;
+    const body = $('rly-body'), stat = $('rly-stat');
+    $('rly-track').textContent = st.id ? $('title').textContent : 'Media Player';
+
+    if(force || rlyKey !== LYRICS.key){
+      rlyKey = LYRICS.key; rlyIdx = -2;
+      if(LYRICS.state === 'loading' || LYRICS.state === 'idle'){
+        body.innerHTML = '<div class="rly-note">Reading lyrics…</div>'; stat.textContent = 'Connecting'; return;
+      }
+      if(LYRICS.state === 'synced'){
+        body.innerHTML = LYRICS.lines.map((l, i) =>
+          '<div class="rl" data-i="' + i + '">' + esc(l.s || '♪') + '</div>').join('');
+        stat.textContent = LYRICS.lines.length + ' lines · synced';
+      }else if(LYRICS.state === 'plain'){
+        body.innerHTML = LYRICS.plain.split('\n').map(l =>
+          '<div class="rl cur">' + esc(l || ' ') + '</div>').join('');
+        stat.textContent = 'Not synced';
+        return;
+      }else{
+        body.innerHTML = '<div class="rly-note">' + esc(LYRICS.msg || 'No lyrics found') + '</div>';
+        stat.textContent = 'Nothing to show';
+        return;
+      }
+    }
+    if(LYRICS.state !== 'synced') return;
+
+    let idx = -1;
+    for(let i = 0; i < LYRICS.lines.length; i++){
+      if(LYRICS.lines[i].t <= st.pos + 250) idx = i; else break;
+    }
+    if(idx === rlyIdx) return;
+    rlyIdx = idx;
+    const nodes = body.querySelectorAll('.rl');
+    nodes.forEach((n, i) => {
+      n.classList.toggle('cur', i === idx);
+      n.classList.toggle('past', i < idx);
+    });
+    if(nodes[idx]) body.scrollTop = Math.max(0, nodes[idx].offsetTop - body.clientHeight * 0.42);
+  }
+  window.retroLyricTick = renderRetroLyrics;
+
   // Start menu
   const start = $('rstart'), startBtn = $('tb-start');
   function closeStart(){
@@ -3587,7 +3724,7 @@ document.querySelectorAll('.skin-card').forEach(card => {
     start.classList.remove('closing'); start.classList.add('open'); startBtn.classList.add('on');
   };
   document.addEventListener('pointerdown', e => { if(start.classList.contains('open') && !start.contains(e.target) && e.target !== startBtn && !startBtn.contains(e.target)) closeStart(); });
-  $('rs-aura').onclick = () => { closeStart(); setSkin('aura'); };
+  $('rs-skins').onclick = () => { closeStart(); showSkins(); };
   $('rs-exit').onclick = () => { closeStart(); $('btn-logout').click(); };
   $('rd-player').onclick = showWin;      // Media Player icon opens the window
 
@@ -3614,6 +3751,11 @@ document.querySelectorAll('.skin-card').forEach(card => {
     $('r-tnow').textContent = $('t-now').textContent;
     $('r-tend').textContent = $('t-end').textContent;
     $('r-status').textContent = !st.id ? 'Ready' : (st.playing ? 'Playing' : 'Paused');
+
+    // lyrics are fetched here too, so the window has them ready when opened
+    if(st.id) loadLyrics($('title').textContent, $('artist').textContent,
+                         ($('ab-album') && $('ab-album').textContent) || '', st.dur);
+    renderRetroLyrics(false);
   };
 })();
 function retroSync(){ if(window.retroSync) window.retroSync(); }
@@ -3976,7 +4118,7 @@ let biosTab = 'summary';
    that goes wrong reads as "no lyrics" rather than breaking the panel. */
 const LYRICS = { key:'', state:'idle', lines:null, plain:'', msg:'' };
 
-async function biosLyrics(track, artist, album, durMs){
+async function loadLyrics(track, artist, album, durMs){
   const key = artist + ' ' + track;
   if(LYRICS.key === key) return;
   LYRICS.key = key; LYRICS.state = 'loading';
@@ -4155,7 +4297,7 @@ function biosSync(){
   const track = $('title').textContent, artist = $('artist').textContent;
   const album = ($('ab-album') && $('ab-album').textContent) || '';
 
-  if(st.id) biosLyrics(track, artist, album, st.dur);
+  if(st.id) loadLyrics(track, artist, album, st.dur);
 
   if(biosTab === 'summary' && $('bios-log').dataset.id !== (st.id || '')){
     $('bios-log').dataset.id = st.id || '';               // new track — rebuild the readout
@@ -4373,7 +4515,7 @@ function enterApp(){
   // brief version stamp so we can confirm the latest file actually loaded
   (function(){
     const v = document.createElement('div');
-    v.textContent = 'build v18';
+    v.textContent = 'build v19';
     v.style.cssText = 'position:fixed;right:8px;top:calc(var(--safe-t) + 4px);z-index:99;'+
       'font:9px monospace;color:#4C7BFF;opacity:.7;pointer-events:none;';
     document.body.appendChild(v);
