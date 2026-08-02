@@ -231,7 +231,29 @@
   .ab-hint{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ash-dim);margin-top:var(--s3);}
 
   /* ---------- meta ---------- */
-  .meta{text-align:center;padding:0 var(--s1);}
+  .meta{text-align:center;padding:0 52px;position:relative;}
+  /* the heart is pinned to the right so the title stays optically centred */
+  .like{
+    position:absolute;right:0;top:calc(50% - 22px);
+    width:44px;height:44px;display:grid;place-items:center;border-radius:14px;
+    color:var(--ash);
+    transition:color var(--d-2) var(--e-out), transform var(--d-press) var(--e-out),
+               background var(--d-2) var(--e-out);
+  }
+  .like svg{
+    width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linejoin:round;
+    transition:fill var(--d-2) var(--e-out), transform var(--d-2) var(--e-spring);
+  }
+  @media (hover:hover){ .like:hover{color:var(--bone);background:rgba(255,255,255,.05);} }
+  .like:active{transform:scale(.92);}
+  .like[disabled]{opacity:.35;pointer-events:none;}
+  .like.on{color:var(--blue);}
+  .like.on svg{fill:currentColor;}
+  /* the beat it gives when you save something */
+  .like.pop svg{animation:likePop 420ms var(--e-spring);}
+  @keyframes likePop{
+    0%{transform:scale(.7);} 40%{transform:scale(1.28);} 70%{transform:scale(.94);} 100%{transform:scale(1);}
+  }
   .title{
     font-family:var(--font-display);font-weight:400;font-size:clamp(29px,8vw,44px);
     line-height:1.05;margin:0 0 10px;letter-spacing:-.01em;
@@ -467,6 +489,14 @@
   }
   .row-add:hover{color:var(--blue-soft);border-color:rgba(76,123,255,.4);}
   .row.active .row-title{color:var(--blue-soft);}
+
+  /* section label inside a results list */
+  .sec-head{
+    padding:14px 0 8px !important;text-align:left !important;
+    font-family:var(--font-mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--ash-dim);
+  }
+  .sec-head:first-child{padding-top:2px !important;}
 
   .note{
     font-family:var(--font-mono);font-size:11px;color:var(--ash);letter-spacing:.05em;
@@ -1373,6 +1403,9 @@
     <div class="meta">
       <h1 class="title" id="title">Nothing playing</h1>
       <p class="artist" id="artist">Hit play to start something</p>
+      <button class="like" id="btn-like" type="button" aria-label="Save to your library" aria-pressed="false" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.4l-1.7-1.6C5.2 14.2 2.2 11.5 2.2 8.2c0-2.7 2.1-4.8 4.8-4.8 1.5 0 3 .7 3.9 1.9.9-1.2 2.4-1.9 3.9-1.9 2.7 0 4.8 2.1 4.8 4.8 0 3.3-3 6-8.1 10.6L12 20.4z"/></svg>
+      </button>
     </div>
     </div>
 
@@ -1672,6 +1705,7 @@ const SCOPES = [
   'playlist-read-private',
   'playlist-read-collaborative',
   'user-library-read',
+  'user-library-modify',
   'user-top-read'
 ].join(' ');
 
@@ -2676,9 +2710,48 @@ async function pollInner(){
       st.id = it.id;
       if(!first){ swapAnim(); buzz(12); }
       capture(it);
+      refreshSaved();                    // does this track sit in your library?
     }
   }catch(e){ /* display already updated above; ignore control-path hiccups */ }
 }
+
+/* ---------- save to library ----------
+   The heart flips the moment you press it and rolls back if Spotify refuses,
+   so the control never feels like it's waiting on the network. */
+let savedReq = 0;
+function setLike(on){
+  st.saved = on;
+  const b = $('btn-like');
+  if(!b) return;
+  b.classList.toggle('on', on === true);
+  b.setAttribute('aria-pressed', on === true ? 'true' : 'false');
+  b.disabled = !st.id;
+  b.setAttribute('aria-label', on === true ? 'Remove from your library' : 'Save to your library');
+}
+async function refreshSaved(){
+  if(!st.id){ setLike(false); return; }
+  const token = ++savedReq;
+  const r = await api('/me/tracks/contains?ids=' + st.id);
+  if(token !== savedReq) return;                    // a newer track won
+  setLike(r.ok && Array.isArray(r.data) ? !!r.data[0] : false);
+}
+$('btn-like').onclick = async () => {
+  if(!st.id) return;
+  const id = st.id, next = st.saved !== true;
+  setLike(next);                                    // optimistic
+  const b = $('btn-like');
+  b.classList.remove('pop'); void b.offsetWidth;
+  if(next) b.classList.add('pop');
+  buzz(next ? 16 : 8);
+  const r = await api('/me/tracks?ids=' + id, { method: next ? 'PUT' : 'DELETE' });
+  if(st.id !== id) return;                          // track changed mid-flight
+  if(!r.ok){
+    setLike(!next);                                 // put it back
+    toast(r.status === 403 ? 'Reconnect to allow saving' : r.msg);
+  }else{
+    toast(next ? 'Saved to your library' : 'Removed from your library');
+  }
+};
 
 /* =========================================================================
    BEAT — we can't hear Spotify's audio, so we fake a steady musical pulse.
@@ -3230,7 +3303,9 @@ async function loadLibrary(force){
       return;
     }
   }
-  if(libLoaded && !force) return;
+  // already indexed: don't re-fetch, but do draw — otherwise a returning
+  // user opens Search to a panel of skeletons that never resolve
+  if(libLoaded && !force){ render($('q').value.trim()); return; }
 
   libLoading = true;
   libLoaded = false;
@@ -3332,50 +3407,109 @@ function score(t, q){
   return -1;
 }
 
+/* ---------- recently played ----------
+   A far more useful landing view than dumping the whole index, and it's the
+   list people actually reach for. */
+let RECENT = [], recentAt = 0;
+async function loadRecent(){
+  if(RECENT.length && Date.now() - recentAt < 60000) return RECENT;
+  const r = await api('/me/player/recently-played?limit=25');
+  if(!r.ok) return RECENT;
+  const seen = new Set(), out = [];
+  ((r.data && r.data.items) || []).forEach(it => {
+    const t = norm(it && it.track);
+    if(t && !seen.has(t.id)){ seen.add(t.id); out.push(t); }
+  });
+  RECENT = out; recentAt = Date.now();
+  return RECENT;
+}
+
+/* ---------- catalog search ----------
+   Spotify closed /search to development-mode apps in Nov 2024, which is why
+   this app indexes your own library and filters it locally. We still ask the
+   catalog first: the moment the app is granted extended quota this lights up
+   on its own, and until then a single failure switches it off for the
+   session so we're not firing doomed requests on every keystroke. */
+let catalogOK = null;                                // null = untested
+let catalogReq = 0;
+async function catalogSearch(q){
+  if(catalogOK === false || !q) return;
+  const token = ++catalogReq;
+  const r = await api('/search?q=' + encodeURIComponent(q) + '&type=track&limit=20');
+  if(!r.ok){
+    catalogOK = false;                               // dev-mode: stop asking
+    return;
+  }
+  catalogOK = true;
+  if(token !== catalogReq) return;                   // typed on since
+  if($('q').value.trim().toLowerCase() !== q) return;
+  const have = new Set(LIB.map(t => t.id));
+  const found = (((r.data || {}).tracks || {}).items || [])
+    .map(norm).filter(t => t && !have.has(t.id));
+  if(!found.length) return;
+  results.appendChild(sectionHead('Everywhere on Spotify'));
+  found.forEach(t => results.appendChild(trackRow(t, true, found)));
+}
+
+function sectionHead(text){
+  const h = document.createElement('div');
+  h.className = 'note sec-head';
+  h.textContent = text;
+  return h;
+}
+
 function render(q){
   if(!libLoaded) return;
   const query = (q || '').toLowerCase();
 
-  let list;
+  // empty box: show what you played recently, then the index
   if(!query){
-    list = LIB.slice(0, 80);
-  }else{
-    list = LIB
-      .map(t => ({ t: t, s: score(t, query) }))
-      .filter(x => x.s >= 0)
-      .sort((a, b) => a.s - b.s)
-      .slice(0, 80)
-      .map(x => x.t);
-  }
-
-  if(!list.length){
     results.innerHTML = '';
-    const miss = document.createElement('div');
-    miss.className = 'note';
-    miss.innerHTML = 'Not in your library yet.<br>Play it once in Spotify and it lands here for good.';
-    results.appendChild(miss);
-
-    const jump = document.createElement('a');
-    jump.className = 'gate-btn';
-    jump.style.cssText = 'display:block;width:fit-content;margin:0 auto;text-decoration:none;';
-    jump.href = 'https://open.spotify.com/search/' + encodeURIComponent(q);
-    jump.target = '_blank';
-    jump.rel = 'noopener';
-    jump.textContent = 'Find "' + q + '" in Spotify';
-    results.appendChild(jump);
+    loadRecent().then(rec => {
+      if($('q').value.trim()) return;                // typed while we fetched
+      results.innerHTML = '';
+      if(rec.length){
+        results.appendChild(sectionHead('Recently played'));
+        rec.forEach(t => results.appendChild(trackRow(t, true, rec)));
+      }
+      results.appendChild(sectionHead(LIB.length + ' tracks in your library'));
+      LIB.slice(0, 60).forEach(t => results.appendChild(trackRow(t, true, LIB)));
+    });
     return;
   }
 
-  results.innerHTML = '';
-  const head = document.createElement('div');
-  head.className = 'note';
-  head.style.cssText = 'padding:6px 0 12px;text-align:left;';
-  head.textContent = query
-    ? list.length + (list.length === 80 ? '+' : '') + ' of ' + LIB.length
-    : LIB.length + ' tracks indexed';
-  results.appendChild(head);
+  const list = LIB
+    .map(t => ({ t: t, s: score(t, query) }))
+    .filter(x => x.s >= 0)
+    .sort((a, b) => a.s - b.s)
+    .slice(0, 80)
+    .map(x => x.t);
 
-  list.forEach(t => results.appendChild(trackRow(t, true, LIB)));
+  results.innerHTML = '';
+
+  if(list.length){
+    results.appendChild(sectionHead('In your library · ' + list.length + (list.length === 80 ? '+' : '')));
+    list.forEach(t => results.appendChild(trackRow(t, true, list)));
+  }else{
+    const miss = document.createElement('div');
+    miss.className = 'note';
+    miss.innerHTML = 'Nothing in your library matches.';
+    results.appendChild(miss);
+  }
+
+  // then ask the catalog; it appends underneath if the app is allowed to
+  catalogSearch(query);
+
+  if(catalogOK === false && !list.length){
+    const jump = document.createElement('a');
+    jump.className = 'gate-btn';
+    jump.style.cssText = 'display:block;width:fit-content;margin:12px auto 0;text-decoration:none;';
+    jump.href = 'https://open.spotify.com/search/' + encodeURIComponent(q);
+    jump.target = '_blank';
+    jump.rel = 'noopener';
+    jump.textContent = 'Search "' + q + '" in Spotify';
+    results.appendChild(jump);
+  }
 }
 
 $('q').addEventListener('input', e => { render(e.target.value.trim()); });
@@ -4674,7 +4808,7 @@ function enterApp(){
   // brief version stamp so we can confirm the latest file actually loaded
   (function(){
     const v = document.createElement('div');
-    v.textContent = 'build v20';
+    v.textContent = 'build v21';
     v.style.cssText = 'position:fixed;right:8px;top:calc(var(--safe-t) + 4px);z-index:99;'+
       'font:9px monospace;color:#4C7BFF;opacity:.7;pointer-events:none;';
     document.body.appendChild(v);
