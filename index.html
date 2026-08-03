@@ -1133,8 +1133,8 @@
      ========================================================================= */
   #orbit{
     position:fixed;inset:0;z-index:6;display:none;overflow:hidden;
-    background:radial-gradient(120% 90% at 50% 42%, #05070e 0%, #010205 60%, #000 100%);
-    color:#cfd8f5;
+    background:radial-gradient(120% 90% at 50% 42%, #0a0a0a 0%, #030303 60%, #000 100%);
+    color:#d8d8d8;
     font-family:var(--font-body);
     user-select:none;-webkit-user-select:none;
   }
@@ -1159,17 +1159,17 @@
   .ob-top{flex:0 0 auto;text-align:center;}
   .ob-tag{
     font-family:var(--font-mono);font-size:8.5px;letter-spacing:.34em;text-transform:uppercase;
-    color:rgba(150,170,220,.5);
+    color:rgba(210,210,210,.45);
   }
   .ob-title{
     font-family:var(--font-display);font-size:clamp(21px,5.4vw,30px);line-height:1.12;
-    margin:8px 0 3px;color:#eef2ff;
+    margin:8px 0 3px;color:#f2f2f2;
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-    text-shadow:0 0 26px rgba(120,160,255,.3);
+    text-shadow:0 0 26px rgba(255,255,255,.22);
   }
   .ob-artist{
     font-family:var(--font-mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;
-    color:rgba(160,180,225,.62);margin:0;
+    color:rgba(200,200,200,.6);margin:0;
   }
   .ob-spacer{flex:1 1 auto;min-height:0;}
 
@@ -1178,28 +1178,28 @@
   .ob-seek{position:relative;height:34px;display:flex;align-items:center;cursor:pointer;touch-action:none;}
   .ob-seek::before{
     content:"";position:absolute;left:0;right:0;height:1px;
-    background:rgba(150,175,230,.22);
+    background:rgba(255,255,255,.18);
   }
   .ob-fill{
     position:absolute;left:0;height:1px;
-    background:linear-gradient(90deg, rgba(140,180,255,.5), #dce9ff);
-    box-shadow:0 0 10px rgba(150,190,255,.65);
+    background:linear-gradient(90deg, rgba(255,255,255,.45), #fff);
+    box-shadow:0 0 10px rgba(255,255,255,.5);
   }
   .ob-dot{
-    position:absolute;width:6px;height:6px;border-radius:50%;background:#eaf1ff;
-    transform:translateX(-3px);box-shadow:0 0 12px rgba(160,200,255,.9);
+    position:absolute;width:6px;height:6px;border-radius:50%;background:#fff;
+    transform:translateX(-3px);box-shadow:0 0 12px rgba(255,255,255,.75);
     transition:transform var(--d-1) var(--e-spring);
   }
   .ob-seek:active .ob-dot{transform:translateX(-3px) scale(1.5);}
   .ob-times{
     display:flex;justify-content:space-between;
     font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;
-    color:rgba(150,175,230,.6);font-variant-numeric:tabular-nums;margin-top:2px;
+    color:rgba(200,200,200,.55);font-variant-numeric:tabular-nums;margin-top:2px;
   }
   .ob-keys{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:14px;}
   .ob-key{
     width:46px;height:46px;display:grid;place-items:center;border-radius:50%;
-    color:#c9d6f5;border:1px solid rgba(150,175,230,.2);background:rgba(120,150,220,.05);
+    color:#dcdcdc;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.03);
     transition:transform var(--d-press) var(--e-out), border-color var(--d-2) var(--e-out),
                background var(--d-2) var(--e-out), color var(--d-2) var(--e-out);
   }
@@ -1208,15 +1208,15 @@
      <svg>, so hiding these icons has to be spelled out */
   #orbit svg[hidden]{display:none;}
   .ob-key:active{transform:scale(.94);}
-  @media (hover:hover){ .ob-key:hover{border-color:rgba(180,205,255,.45);background:rgba(140,175,255,.1);color:#fff;} }
+  @media (hover:hover){ .ob-key:hover{border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.08);color:#fff;} }
   .ob-key.big{
-    width:60px;height:60px;border-color:rgba(190,215,255,.5);
-    background:rgba(150,185,255,.14);box-shadow:0 0 30px -8px rgba(140,180,255,.7);
+    width:60px;height:60px;border-color:rgba(255,255,255,.45);
+    background:rgba(255,255,255,.1);box-shadow:0 0 30px -8px rgba(255,255,255,.55);
   }
   .ob-key.big svg{width:23px;height:23px;}
   .ob-stat{
     text-align:center;font-family:var(--font-mono);font-size:8px;letter-spacing:.26em;
-    text-transform:uppercase;color:rgba(140,165,215,.42);margin-top:12px;
+    text-transform:uppercase;color:rgba(200,200,200,.38);margin-top:12px;
   }
   /* =========================================================================
      BIOS SKIN — a POST/setup screen in phosphor mint on black. The album art
@@ -2137,8 +2137,11 @@ const P = (function(){
     raf = requestAnimationFrame(frame);
     let dt = (now - last)/1000; last = now;
     if(dt > 0.05) dt = 0.05;
-    // the aura skin hides this canvas and runs its own scene — do no work here
-    if(document.body.dataset.skin === 'aura'){ return; }
+    // Aura runs its own scene here, and every other skin hides this canvas
+    // outright — either way there is nothing to draw. Without the second
+    // check this kept rendering a full particle field into a display:none
+    // canvas on Retro, BIOS and Orbit.
+    if(document.body.dataset.skin === 'aura' || !cv.clientWidth){ return; }
     t += dt;
     // ease pointer toward target (cinematic lag)
     px += (pxT - px) * Math.min(1, dt*3);
@@ -4868,14 +4871,35 @@ const ORB = (function(){
   ];
 
   let cv, ctx, w = 0, h = 0, dpr = 1, cx = 0, cy = 0, rad = 0;
-  let dots = [], nodes = [], links = [];
+  let dots = [], nodes = [], links = [], shield = [], slinks = [];
+  const SHELL = 1.34;                        // how far the shield stands off
   let running = false, raf = 0, last = 0;
   let yaw = 0, spin = 0.055;                 // radians/sec
   const TILT = 21 * R2;
   const cosT = Math.cos(TILT), sinT = Math.sin(TILT);
 
   let waves = [];                            // {src:[x,y,z], t0, life}
+
+  /* Reused draw buffers. Allocating these per frame is what made the globe
+     cost twice what the warp does. */
+  const NB = 6, NS = 4;
+  const bx = [], by = [], bs = [], bn = new Int32Array(NB);
+  const BCOL = [];
+  for(let k = 0; k < NB; k++){
+    bx.push(new Float32Array(9000)); by.push(new Float32Array(9000)); bs.push(new Float32Array(9000));
+    const f = (k + 0.5) / NB;
+    const g = Math.round(190 + f * 65);
+    BCOL.push('rgba(' + g + ',' + g + ',' + g + ',' + Math.min(1, 0.25 + f).toFixed(2) + ')');
+  }
+  const spx = new Float32Array(400), spy = new Float32Array(400), spd = new Float32Array(400);
+  const srx = new Float32Array(400), sry = new Float32Array(400), srz = new Float32Array(400);
+  const sl = [], sn = new Int32Array(NS), SCOL = [];
+  for(let k = 0; k < NS; k++){
+    sl.push(new Int32Array(900));
+    SCOL.push('rgba(255,255,255,' + (((k + 0.5) / NS) * 0.75).toFixed(3) + ')');
+  }
   let lyricKey = '', lyricIdx = -2, pace = 3.2;
+  let lyricLon0 = 0, lyricText = '';        // where the line sits on the sphere
 
   function build(){
     dots = [];
@@ -4892,6 +4916,30 @@ const ORB = (function(){
         });
       }
     }
+    // A shell of points standing off the surface — the shield. Fibonacci
+    // placement spreads them evenly, then each links to its nearest few so
+    // the lines triangulate instead of clumping.
+    shield = [];
+    const N = 132, GA = Math.PI * (3 - Math.sqrt(5));
+    for(let i = 0; i < N; i++){
+      const y = 1 - (i / (N - 1)) * 2;
+      const r = Math.sqrt(Math.max(0, 1 - y * y));
+      const th = GA * i;
+      shield.push({ x: Math.cos(th) * r, y: y, z: Math.sin(th) * r });
+    }
+    slinks = [];
+    const sseen = new Set();
+    shield.forEach((a, i) => {
+      shield.map((b, k) => ({ k, d: a.x*b.x + a.y*b.y + a.z*b.z }))
+        .filter(o => o.k !== i).sort((p, q) => q.d - p.d).slice(0, 3)
+        .forEach(o => {
+          const key = Math.min(i, o.k) + ':' + Math.max(i, o.k);
+          if(sseen.has(key)) return;
+          sseen.add(key);
+          slinks.push([i, o.k]);
+        });
+    });
+
     nodes = CITIES.map(([lon, lat]) => {
       const la = lat * R2, lo = lon * R2;
       return { x: Math.cos(la) * Math.cos(lo), y: Math.sin(la), z: Math.cos(la) * Math.sin(lo) };
@@ -4922,8 +4970,32 @@ const ORB = (function(){
     cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     cx = w / 2; cy = h * 0.46;
-    rad = Math.min(w * 0.42, h * 0.30);
+    rad = Math.min(w * 0.47, h * 0.335);      // the world is the subject — let it fill
     if(!dots.length) build();
+  }
+
+  /* Scratch projection for the hot loops. Returning an object here meant
+     thousands of allocations a frame, which is what actually cost the
+     framerate — not the draw calls. */
+  let _sx = 0, _sy = 0, _d = 0, _rx = 0, _ry = 0, _rz = 0;
+  function proj(p, sy, cyw){
+    const x = p.x * cyw - p.z * sy;
+    const z = p.x * sy + p.z * cyw;
+    const y2 = p.y * cosT - z * sinT;
+    _rz = p.y * sinT + z * cosT;
+    _sx = cx + x * rad; _sy = cy - y2 * rad; _d = _rz; _rx = x; _ry = y2;
+  }
+  function litAt(rx, ry, rz, mul, t){
+    let add = 0;
+    for(let i = 0; i < waves.length; i++){
+      const v = waves[i];
+      const cosd = rx * v.src[0] + ry * v.src[1] + rz * v.src[2];
+      const ang = Math.acos(cosd < -1 ? -1 : cosd > 1 ? 1 : cosd);
+      const age = (t - v.t0) / v.life;
+      const d = Math.abs(ang - age * 3.2);
+      if(d < 0.3) add += (1 - d / 0.3) * (1 - age) * mul;
+    }
+    return add;
   }
 
   // spin about the polar axis, then tilt the pole toward the viewer
@@ -4950,92 +5022,157 @@ const ORB = (function(){
     // live shockwaves, each expanding as an angular radius
     waves = waves.filter(v => t - v.t0 < v.life);
 
-    // --- land dots ---
-    for(let i = 0; i < dots.length; i++){
-      const p = dots[i];
-      const q = project(p, sy, cyw);
-      if(q.d < 0.02) continue;                        // back of the globe
-      let b = (0.22 + q.d * 0.62) * p.j;
-      for(const v of waves){                           // lit by a passing wave
+    // how hard a wave is hitting a given surface point
+    const lit = (q, mul) => {
+      let add = 0;
+      for(const v of waves){
         const cosd = q.rx * v.src[0] + q.ry * v.src[1] + q.rz * v.src[2];
         const ang = Math.acos(Math.max(-1, Math.min(1, cosd)));
         const age = (t - v.t0) / v.life;
-        const front = age * 3.2;                       // wave radius in radians
-        const d = Math.abs(ang - front);
-        if(d < 0.26) b += (1 - d / 0.26) * (1 - age) * 1.5;
+        const d = Math.abs(ang - age * 3.2);
+        if(d < 0.3) add += (1 - d / 0.3) * (1 - age) * mul;
       }
+      return add;
+    };
+
+    // ---- shield, back half first so the globe sits inside the cage ----
+    drawShield(sy, cyw, t, false);
+
+    // --- land dots ---
+    // Bucketed by brightness: a fillStyle string per dot meant thousands of
+    // allocations a frame. Six buckets means six.
+    for(let k = 0; k < NB; k++) bn[k] = 0;
+    const hot = waves.length > 0;
+    for(let i = 0; i < dots.length; i++){
+      const p = dots[i];
+      proj(p, sy, cyw);
+      if(_d < 0.02) continue;                         // back of the globe
+      let b = (0.24 + _d * 0.62) * p.j;
+      if(hot) b += litAt(_rx, _ry, _rz, 1.5, t);
       if(b <= 0.03) continue;
-      const s = q.d > 0.72 ? 1.7 : 1.3;
-      ctx.fillStyle = b > 0.72
-        ? 'rgba(232,242,255,' + Math.min(1, b) + ')'
-        : 'rgba(163,193,248,' + Math.min(0.95, b) + ')';
-      ctx.fillRect(q.sx, q.sy, s, s);
+      const k = b >= 1 ? NB - 1 : (b * NB) | 0;
+      const n = bn[k]++;
+      bx[k][n] = _sx; by[k][n] = _sy; bs[k][n] = _d > 0.72 ? 1.8 : 1.4;
+    }
+    for(let k = 0; k < NB; k++){
+      if(!bn[k]) continue;
+      ctx.fillStyle = BCOL[k];
+      for(let n = 0; n < bn[k]; n++) ctx.fillRect(bx[k][n], by[k][n], bs[k][n], bs[k][n]);
     }
 
-    // --- mesh ---
+    // --- surface mesh between cities ---
     ctx.lineWidth = 0.7;
     for(const [a, b] of links){
       const p = project(nodes[a], sy, cyw), q = project(nodes[b], sy, cyw);
       if(p.d < 0 && q.d < 0) continue;
-      let alpha = 0.1 + Math.max(0, Math.min(p.d, q.d)) * 0.3;
-      for(const v of waves){
-        const age = (t - v.t0) / v.life;
-        const cosd = p.rx * v.src[0] + p.ry * v.src[1] + p.rz * v.src[2];
-        const ang = Math.acos(Math.max(-1, Math.min(1, cosd)));
-        if(Math.abs(ang - age * 3.2) < 0.4) alpha += (1 - age) * 0.65;
-      }
-      ctx.strokeStyle = 'rgba(150,190,255,' + Math.min(0.9, alpha) + ')';
+      const alpha = 0.1 + Math.max(0, Math.min(p.d, q.d)) * 0.3 + lit(p, 0.7);
+      ctx.strokeStyle = 'rgba(255,255,255,' + Math.min(0.9, alpha) + ')';
       ctx.beginPath(); ctx.moveTo(p.sx, p.sy); ctx.lineTo(q.sx, q.sy); ctx.stroke();
     }
-    // node points
     for(const n of nodes){
       const q = project(n, sy, cyw);
       if(q.d < 0) continue;
-      let a = 0.25 + q.d * 0.35;
-      for(const v of waves){
-        const age = (t - v.t0) / v.life;
-        const cosd = q.rx * v.src[0] + q.ry * v.src[1] + q.rz * v.src[2];
-        if(Math.abs(Math.acos(Math.max(-1, Math.min(1, cosd))) - age * 3.2) < 0.4) a += (1 - age) * 0.8;
-      }
-      ctx.fillStyle = 'rgba(220,236,255,' + Math.min(1, a) + ')';
-      ctx.beginPath(); ctx.arc(q.sx, q.sy, 1.7, 0, 6.3); ctx.fill();
+      const a = 0.28 + q.d * 0.35 + lit(q, 0.9);
+      ctx.fillStyle = 'rgba(255,255,255,' + Math.min(1, a) + ')';
+      ctx.fillRect(q.sx - 1.4, q.sy - 1.4, 2.8, 2.8);
     }
 
-    // --- the lit limb, brightest toward the top right ---
+    // --- the words, lying on the surface ---
+    drawLyric(sy, cyw);
+
+    // --- the lit limb ---
     const lg = ctx.createLinearGradient(cx - rad, cy - rad, cx + rad, cy + rad);
-    lg.addColorStop(0, 'rgba(150,190,255,.08)');
-    lg.addColorStop(0.45, 'rgba(220,238,255,.7)');
-    lg.addColorStop(1, 'rgba(150,190,255,.06)');
+    lg.addColorStop(0, 'rgba(255,255,255,.07)');
+    lg.addColorStop(0.45, 'rgba(255,255,255,.72)');
+    lg.addColorStop(1, 'rgba(255,255,255,.06)');
     ctx.strokeStyle = lg; ctx.lineWidth = 1.1;
     ctx.beginPath(); ctx.arc(cx, cy, rad, 0, 6.3); ctx.stroke();
 
-    drawLyric();
+    // ---- shield, front half over the top ----
+    drawShield(sy, cyw, t, true);
   }
 
-  /* the current line bends around the top of the globe */
-  function drawLyric(){
-    const line = currentLyric();
+  /* The cage standing off the globe. Drawn in two passes — the half behind
+     the world first, the half in front last — so the globe sits inside it. */
+  function drawShield(sy, cyw, t, front){
+    const R = rad * SHELL;
+    // project once, reuse for both the line and node passes
+    for(let i = 0; i < shield.length; i++){
+      proj(shield[i], sy, cyw);
+      spd[i] = _d; srx[i] = _rx; sry[i] = _ry; srz[i] = _rz;
+      spx[i] = cx + _rx * R; spy[i] = cy - _ry * R;
+    }
+    ctx.lineWidth = 0.6;
+    const hot = waves.length > 0;
+    for(let k = 0; k < NS; k++) sn[k] = 0;
+    for(let i = 0; i < slinks.length; i++){
+      const a = slinks[i][0], b = slinks[i][1];
+      const mid = (spd[a] + spd[b]) / 2;
+      if(front ? mid < 0 : mid >= 0) continue;
+      let al = front ? 0.1 + mid * 0.26 : 0.05 + (mid + 1) * 0.05;
+      if(hot) al += litAt(srx[a], sry[a], srz[a], front ? 0.5 : 0.22, t);
+      const k = Math.min(NS - 1, (al * NS / 0.75) | 0);
+      sl[k][sn[k]++] = i;
+    }
+    for(let k = 0; k < NS; k++){
+      if(!sn[k]) continue;
+      ctx.strokeStyle = SCOL[k];
+      ctx.beginPath();
+      for(let n = 0; n < sn[k]; n++){
+        const e = slinks[sl[k][n]];
+        ctx.moveTo(spx[e[0]], spy[e[0]]); ctx.lineTo(spx[e[1]], spy[e[1]]);
+      }
+      ctx.stroke();
+    }
+    ctx.fillStyle = front ? 'rgba(255,255,255,.5)' : 'rgba(255,255,255,.12)';
+    for(let i = 0; i < shield.length; i++){
+      if(front ? spd[i] < 0 : spd[i] >= 0) continue;
+      ctx.fillRect(spx[i] - 1.1, spy[i] - 1.1, 2.2, 2.2);
+    }
+  }
+
+
+
+  /* The line is laid onto the globe itself: each character gets a lon/lat,
+     rides the rotation, tilts to follow the surface and drops away over the
+     horizon. It's anchored facing the viewer the moment the line lands. */
+  const R2D = 180 / Math.PI;
+  function drawLyric(sy, cyw){
+    const line = lyricText;
     if(!line) return;
-    const r = rad + 26;
-    ctx.save();
-    ctx.font = '500 14px ' + getComputedStyle(document.body).getPropertyValue('--font-body');
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const chars = [...line];
-    // keep the arc inside a sane sweep however long the line is
-    const per = Math.min(0.085, 2.5 / Math.max(1, chars.length));
-    let a = -Math.PI / 2 - (chars.length - 1) * per / 2;
-    ctx.fillStyle = 'rgba(232,241,255,.92)';
-    ctx.shadowColor = 'rgba(140,185,255,.7)'; ctx.shadowBlur = 12;
-    for(const ch of chars){
+    const lat = 9 * R2;
+    const stepLon = Math.min(6.4, 150 / Math.max(1, chars.length)) * R2;
+    const base = Math.cos(lat);
+
+    ctx.save();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for(let i = 0; i < chars.length; i++){
+      // Screen x goes as cos(lon + yaw), so rising longitude travels leftward.
+      // Characters therefore step backwards in longitude to read left to right.
+      const lon = lyricLon0 + ((chars.length - 1) / 2 - i) * stepLon;
+      const p = { x: base * Math.cos(lon), y: Math.sin(lat), z: base * Math.sin(lon) };
+      const q = project(p, sy, cyw);
+      if(q.d < 0.12) continue;                       // gone round the back
+      // the next character's position gives the baseline direction
+      const lon2 = lon - 0.02;
+      const n = project({ x: base * Math.cos(lon2), y: Math.sin(lat), z: base * Math.sin(lon2) }, sy, cyw);
+      const ang = Math.atan2(n.sy - q.sy, n.sx - q.sx);
+      const fade = Math.min(1, (q.d - 0.12) * 3.2);
+      const size = rad * 0.082 * (0.72 + q.d * 0.28);
+
       ctx.save();
-      ctx.translate(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
-      ctx.rotate(a + Math.PI / 2);
-      ctx.fillText(ch, 0, 0);
+      ctx.translate(q.sx, q.sy);
+      ctx.rotate(ang);
+      ctx.font = '600 ' + size.toFixed(1) + 'px ' + FONT;
+      ctx.shadowColor = 'rgba(255,255,255,.55)'; ctx.shadowBlur = 10 * fade;
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.93 * fade).toFixed(3) + ')';
+      ctx.fillText(chars[i], 0, 0);
       ctx.restore();
-      a += per;
     }
     ctx.restore();
   }
+  const FONT = "'Inter Tight', system-ui, sans-serif";
 
   function currentLyric(){
     if(typeof LYRICS === 'undefined' || LYRICS.state !== 'synced' || !LYRICS.lines) return '';
@@ -5074,6 +5211,10 @@ const ORB = (function(){
     }
     if(idx !== lyricIdx){
       lyricIdx = idx;
+      lyricText = idx >= 0 ? (LYRICS.lines[idx].s || '') : '';
+      // drop the line onto the meridian currently facing us, so it reads
+      // straight away and then drifts with the spin
+      lyricLon0 = -yaw + Math.PI / 2;
       if(idx >= 0 && st.playing) pulse();
     }
   }
@@ -5288,7 +5429,7 @@ function enterApp(){
   // brief version stamp so we can confirm the latest file actually loaded
   (function(){
     const v = document.createElement('div');
-    v.textContent = 'build v22';
+    v.textContent = 'build v23';
     v.style.cssText = 'position:fixed;right:8px;top:calc(var(--safe-t) + 4px);z-index:99;'+
       'font:9px monospace;color:#4C7BFF;opacity:.7;pointer-events:none;';
     document.body.appendChild(v);
