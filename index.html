@@ -4583,39 +4583,82 @@ let biosTab = 'summary';
    that goes wrong reads as "no lyrics" rather than breaking the panel. */
 const LYRICS = { key:'', state:'idle', lines:null, plain:'', msg:'' };
 
+/* Spotify's own lyrics come from Musixmatch, which has no public API, so
+   these come from LRCLIB. Its exact-match endpoint is strict, and Spotify
+   titles rarely match it as-is: "- Remastered 2011", "(feat. …)", several
+   artists joined by commas. So we clean the metadata and work down from the
+   most precise lookup to the loosest, taking the first thing that answers. */
+const stripTitle = t => String(t || '')
+  .replace(/\s*[-–—]\s*(remaster(ed)?|live|acoustic|radio edit|single|mono|stereo|bonus|deluxe)\b.*$/i, '')
+  .replace(/\s*[-–—]\s*\d{4}\s*(remaster(ed)?|version|mix)\b.*$/i, '')
+  .replace(/\s*[\(\[][^)\]]*\b(feat|ft|with)\b[^)\]]*[\)\]]/ig, '')
+  .replace(/\s*[\(\[][^)\]]*\b(remaster(ed)?|live|version|edit|mix|instrumental)\b[^)\]]*[\)\]]/ig, '')
+  .trim();
+const primaryArtist = a => String(a || '').split(/,|&|\bfeat\.?\b|\bft\.?\b|\bwith\b/i)[0].trim();
+
+async function lrc(path){
+  try{
+    const r = await fetch('https://lrclib.net/api/' + path, { headers:{ Accept:'application/json' } });
+    if(!r.ok) return r.status === 404 ? null : { __err: r.status };
+    return await r.json();
+  }catch(e){ return { __net: true }; }
+}
+
+// out of a search result list, take the best fit: synced beats plain, and
+// the closest running time beats the rest
+function bestMatch(list, durMs){
+  if(!Array.isArray(list) || !list.length) return null;
+  const want = Math.round((durMs || 0) / 1000);
+  let best = null, bestScore = -1e9;
+  for(const it of list){
+    if(!it || (!it.syncedLyrics && !it.plainLyrics)) continue;
+    let sc = it.syncedLyrics ? 100 : 0;
+    if(want && it.duration) sc -= Math.min(60, Math.abs(it.duration - want)) * 2;
+    if(sc > bestScore){ bestScore = sc; best = it; }
+  }
+  return best;
+}
+
 async function loadLyrics(track, artist, album, durMs){
-  const key = artist + ' ' + track;
+  const key = artist + ' ' + track;
   if(LYRICS.key === key) return;
   LYRICS.key = key; LYRICS.state = 'loading';
   LYRICS.lines = null; LYRICS.plain = ''; LYRICS.msg = '';
   lyCur = -2; biosLyricLine();                           // show the strip's new state at once
   if(!track || !artist){ LYRICS.state = 'none'; LYRICS.msg = 'NO TRACK LOADED'; lyCur = -2; biosLyricLine(); return; }
 
-  const q = new URLSearchParams({
-    artist_name: artist, track_name: track,
-    album_name: album || '', duration: String(Math.round((durMs || 0) / 1000)),
-  });
-  try{
-    const r = await fetch('https://lrclib.net/api/get?' + q.toString(), { headers:{ Accept:'application/json' } });
+  const cleanT = stripTitle(track) || track;
+  const cleanA = primaryArtist(artist) || artist;
+  const secs = String(Math.round((durMs || 0) / 1000));
+  const qs = o => new URLSearchParams(o).toString();
+
+  let hit = null, netErr = false, httpErr = 0;
+  const attempts = [
+    () => lrc('get?' + qs({ artist_name: artist, track_name: track, album_name: album || '', duration: secs })),
+    () => lrc('get?' + qs({ artist_name: cleanA, track_name: cleanT })),
+    () => lrc('search?' + qs({ track_name: cleanT, artist_name: cleanA })).then(r => Array.isArray(r) ? bestMatch(r, durMs) : r),
+    () => lrc('search?' + qs({ q: cleanA + ' ' + cleanT })).then(r => Array.isArray(r) ? bestMatch(r, durMs) : r),
+  ];
+  for(const go of attempts){
+    const d = await go();
     if(LYRICS.key !== key) return;                        // track moved on
-    if(r.status === 404){ LYRICS.state = 'none'; LYRICS.msg = 'NO LYRICS ON RECORD'; }
-    else if(!r.ok){ LYRICS.state = 'none'; LYRICS.msg = 'LYRICS BUS ERROR ' + r.status; }
-    else{
-      const d = await r.json();
-      if(LYRICS.key !== key) return;
-      if(d && d.syncedLyrics){
-        LYRICS.lines = parseLRC(d.syncedLyrics);
-        LYRICS.state = LYRICS.lines.length ? 'synced' : 'none';
-        if(!LYRICS.lines.length) LYRICS.msg = 'NO LYRICS ON RECORD';
-      }else if(d && d.plainLyrics){
-        LYRICS.plain = d.plainLyrics; LYRICS.state = 'plain';
-      }else{
-        LYRICS.state = 'none'; LYRICS.msg = 'NO LYRICS ON RECORD';
-      }
-    }
-  }catch(e){
-    if(LYRICS.key !== key) return;
-    LYRICS.state = 'none'; LYRICS.msg = 'LYRICS BUS UNREACHABLE';
+    if(d && d.__net){ netErr = true; break; }
+    if(d && d.__err){ httpErr = d.__err; continue; }
+    if(d && (d.syncedLyrics || d.plainLyrics)){ hit = d; break; }
+  }
+
+  if(hit && hit.syncedLyrics){
+    LYRICS.lines = parseLRC(hit.syncedLyrics);
+    if(LYRICS.lines.length){ LYRICS.state = 'synced'; }
+    else if(hit.plainLyrics){ LYRICS.plain = hit.plainLyrics; LYRICS.state = 'plain'; }
+    else { LYRICS.state = 'none'; LYRICS.msg = 'NO LYRICS ON RECORD'; }
+  }else if(hit && hit.plainLyrics){
+    LYRICS.plain = hit.plainLyrics; LYRICS.state = 'plain';
+  }else{
+    LYRICS.state = 'none';
+    LYRICS.msg = netErr ? 'LYRICS BUS UNREACHABLE'
+               : httpErr ? 'LYRICS BUS ERROR ' + httpErr
+               : 'NO LYRICS ON RECORD';
   }
   lyCur = -2; biosLyricLine();
 }
@@ -5100,6 +5143,16 @@ const ORB = (function(){
     // ---- shield, back half first so the globe sits inside the cage ----
     drawShield(sy, cyw, t, false);
 
+    // --- the body of the world ---
+    // Without this the sphere is only dots over nothing, so the stars and the
+    // far side of the cage showed straight through it.
+    const bg = ctx.createRadialGradient(cx - rad * 0.32, cy - rad * 0.38, rad * 0.05, cx, cy, rad);
+    bg.addColorStop(0, '#12151c');
+    bg.addColorStop(0.55, '#080a0e');
+    bg.addColorStop(1, '#000');
+    ctx.fillStyle = bg;
+    ctx.beginPath(); ctx.arc(cx, cy, rad, 0, 6.3); ctx.fill();
+
     // --- land dots ---
     // Bucketed by brightness: a fillStyle string per dot meant thousands of
     // allocations a frame. Six buckets means six.
@@ -5568,7 +5621,7 @@ function enterApp(){
   // brief version stamp so we can confirm the latest file actually loaded
   (function(){
     const v = document.createElement('div');
-    v.textContent = 'build v26';
+    v.textContent = 'build v27';
     v.style.cssText = 'position:fixed;right:8px;top:calc(var(--safe-t) + 4px);z-index:99;'+
       'font:9px monospace;color:#4C7BFF;opacity:.7;pointer-events:none;';
     document.body.appendChild(v);
