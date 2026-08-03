@@ -1175,6 +1175,20 @@
 
   /* readout + transport, kept thin so the globe stays the subject */
   .ob-bot{flex:0 0 auto;pointer-events:auto;}
+  /* the same destinations as the main player, in Orbit's own language */
+  .ob-menu{display:flex;justify-content:space-between;gap:6px;margin-bottom:12px;}
+  .ob-m{
+    flex:1;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    border-radius:12px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.03);
+    color:rgba(220,220,220,.72);
+    font-family:var(--font-mono);font-size:7.5px;letter-spacing:.14em;text-transform:uppercase;
+    transition:color var(--d-2) var(--e-out), border-color var(--d-2) var(--e-out),
+               background var(--d-2) var(--e-out), transform var(--d-press) var(--e-out);
+  }
+  .ob-m svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+  .ob-m:active{transform:scale(.94);}
+  @media (hover:hover){ .ob-m:hover{color:#fff;border-color:rgba(255,255,255,.32);background:rgba(255,255,255,.07);} }
+
   .ob-seek{position:relative;height:34px;display:flex;align-items:center;cursor:pointer;touch-action:none;}
   .ob-seek::before{
     content:"";position:absolute;left:0;right:0;height:1px;
@@ -1691,6 +1705,13 @@
     </div>
     <div class="ob-spacer"></div>
     <div class="ob-bot">
+      <div class="ob-menu">
+        <button class="ob-m" id="ob-search" type="button" aria-label="Search your library"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span>Search</span></button>
+        <button class="ob-m" id="ob-lists" type="button" aria-label="Your playlists"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h11M4 12h11M4 17h7"/><circle cx="18" cy="16" r="2.6"/><path d="M20.6 16V8.5l-3.4 1"/></svg><span>Lists</span></button>
+        <button class="ob-m" id="ob-queue" type="button" aria-label="Play queue"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 11h16M4 16h9"/><path d="M15.5 15.5l4.5 2.6-4.5 2.6z" fill="currentColor" stroke="none"/></svg><span>Queue</span></button>
+        <button class="ob-m" id="ob-device" type="button" aria-label="Choose output device"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3"/><circle cx="12" cy="15.5" r="3"/><path d="M10.5 7h3"/></svg><span>Output</span></button>
+        <button class="ob-m" id="ob-skins" type="button" aria-label="Change skin"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2c-4.8 0-8.8 3.6-8.8 8.1 0 4.4 3.4 6.7 6.4 6.7 1.7 0 2.3 1.1 1.7 2.2-.4.8.2 1.6 1.1 1.5 4.6-.5 8.4-4.4 8.4-9.5 0-5-4-9-8.8-9z"/><circle cx="8" cy="10" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="7.6" r="1.1" fill="currentColor" stroke="none"/><circle cx="16" cy="10" r="1.1" fill="currentColor" stroke="none"/></svg><span>Skins</span></button>
+      </div>
       <div class="ob-seek" id="ob-seek">
         <div class="ob-fill" id="ob-fill"></div>
         <div class="ob-dot" id="ob-head"></div>
@@ -4910,12 +4931,13 @@ const ORB = (function(){
   let stars = [];
   function buildStars(){
     stars = [];
-    const n = Math.round((w * h) / 5200);
+    const n = Math.round((w * h) / 2400);
     for(let i = 0; i < n; i++){
+      const big = Math.random();
       stars.push({
         x: Math.random() * w, y: Math.random() * h,
-        r: Math.random() < 0.86 ? 0.6 : 1.1,
-        a: 0.12 + Math.random() * 0.5,
+        r: big < 0.62 ? 0.9 : big < 0.92 ? 1.4 : 2,
+        a: 0.35 + Math.random() * 0.65,
         p: Math.random() * 6.28,           // twinkle phase
       });
     }
@@ -4989,9 +5011,10 @@ const ORB = (function(){
     w = r.width; h = r.height;
     cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    cx = w / 2; cy = h * 0.44;
-    // big enough to run off both sides, as in the reference framing
-    rad = Math.min(w * 0.60, h * 0.40);
+    // Sunk toward the lower left so the lit top-right limb sits in frame and
+    // the world runs off the left, right and bottom edges — the reference crop.
+    cx = w * 0.38; cy = h * 0.50;
+    rad = Math.min(w * 0.62, h * 0.34);
     buildStars();
     if(!dots.length) build();
   }
@@ -5060,7 +5083,7 @@ const ORB = (function(){
     // ---- stars behind everything ----
     for(let i = 0; i < stars.length; i++){
       const st2 = stars[i];
-      const tw = 0.72 + 0.28 * Math.sin(t * 1.3 + st2.p);
+      const tw = 0.78 + 0.22 * Math.sin(t * 1.3 + st2.p);
       ctx.fillStyle = 'rgba(255,255,255,' + (st2.a * tw).toFixed(3) + ')';
       ctx.fillRect(st2.x, st2.y, st2.r, st2.r);
     }
@@ -5187,10 +5210,10 @@ const ORB = (function(){
     // the outgoing line rises away as it fades; the incoming one lifts into
     // place from just below, so the two never sit on top of each other
     const lift = dir > 0 ? -(1 - reveal) * 6 : (1 - alpha) * 10;
-    const lat = (9 + lift) * R2;
+    const lat = (14 + lift) * R2;
     // the globe runs off both sides, so only a narrow band of longitude is
     // actually on screen — keep the whole line inside it
-    const span = Math.min(92, w / rad * 62);
+    const span = Math.min(86, (w / rad) * 54);
     const stepLon = Math.min(5.2, span / Math.max(1, chars.length)) * R2;
     const base = Math.cos(lat);
     const size = Math.min(rad * 0.062, w * 0.05);
@@ -5273,10 +5296,20 @@ const ORB = (function(){
       lyricText = idx >= 0 ? (LYRICS.lines[idx].s || '') : '';
       // drop the line onto the meridian currently facing us, so it reads
       // straight away and then drifts with the spin
-      lyricLon0 = -yaw + Math.PI / 2;
+      lyricLon0 = lyricAnchor();
       lyricT0 = performance.now() / 1000;
       if(idx >= 0 && st.playing) pulse();
     }
+  }
+
+  /* Pick the longitude that lands the middle of the line near the centre of
+     the screen. With the globe pushed into a corner, sitting it on the front
+     meridian would run it off the edge. */
+  function lyricAnchor(){
+    const lat = 14 * (Math.PI / 180);
+    const want = (w * 0.52 - cx) / (Math.cos(lat) * rad);
+    const a = Math.acos(Math.max(-0.82, Math.min(0.82, want)));
+    return a - yaw;
   }
 
   function pulse(){
@@ -5321,6 +5354,11 @@ function orbitSync(){
 
 (function ORBITWIRE(){
   const fwd = (id, target) => { const el = $(id); if(el) el.onclick = () => $(target).click(); };
+  fwd('ob-search', 'btn-search');
+  fwd('ob-lists',  'btn-lists');
+  fwd('ob-queue',  'btn-queue');
+  fwd('ob-device', 'btn-device');
+  fwd('ob-skins',  'btn-skin');
   fwd('ob-prev', 'btn-prev');
   fwd('ob-play', 'btn-play');
   fwd('ob-next', 'btn-next');
@@ -5489,7 +5527,7 @@ function enterApp(){
   // brief version stamp so we can confirm the latest file actually loaded
   (function(){
     const v = document.createElement('div');
-    v.textContent = 'build v24';
+    v.textContent = 'build v25';
     v.style.cssText = 'position:fixed;right:8px;top:calc(var(--safe-t) + 4px);z-index:99;'+
       'font:9px monospace;color:#4C7BFF;opacity:.7;pointer-events:none;';
     document.body.appendChild(v);
