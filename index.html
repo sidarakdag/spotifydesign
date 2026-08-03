@@ -1026,6 +1026,7 @@
   .fi-sw-aura{background:radial-gradient(circle at 50% 42%, #dfe7ff, #6f8dff 42%, #241a4a 100%);}
   .fi-sw-retro{background:linear-gradient(#000082 0 38%, #c0c0c0 38% 100%);}
   .fi-sw-bios{background:#000;background-image:repeating-linear-gradient(0deg,#3ad9a8 0 1px,transparent 1px 3px);}
+  .fi-sw-orbit{background:#03060f;background-image:radial-gradient(circle at 50% 50%, transparent 54%, #b9d6ff 56%, transparent 62%), radial-gradient(circle at 50% 50%, rgba(150,190,255,.6) 0 .6px, transparent .6px);background-size:100% 100%, 4px 4px;}
 
   /* ---- lyrics window ---- */
   .rlyrics{width:min(330px, calc(100vw - 30px));top:58%;left:52%;}
@@ -1124,6 +1125,99 @@
     .rwin.opening, .rwin.closing, .rstart.open, .rstart.closing{animation-duration:.01ms;}
   }
 
+
+  /* =========================================================================
+     ORBIT SKIN — a dot-matrix globe with a network mesh laid over it. The
+     lyric arcs around the top; each new line fires a pulse across the mesh,
+     and the whole world spins at the pace the words are coming.
+     ========================================================================= */
+  #orbit{
+    position:fixed;inset:0;z-index:6;display:none;overflow:hidden;
+    background:radial-gradient(120% 90% at 50% 42%, #05070e 0%, #010205 60%, #000 100%);
+    color:#cfd8f5;
+    font-family:var(--font-body);
+    user-select:none;-webkit-user-select:none;
+  }
+  body[data-skin="orbit"] #orbit{display:block;}
+  body[data-skin="orbit"]{background:#000;}
+  body[data-skin="orbit"] #app,
+  body[data-skin="orbit"] #aura,
+  body[data-skin="orbit"] #figure-wrap,
+  body[data-skin="orbit"] #field,
+  body[data-skin="orbit"] #stars,
+  body[data-skin="orbit"] #bloom,
+  body[data-skin="orbit"] #grain,
+  body[data-skin="orbit"] #cursor-glow{display:none !important;}
+
+  #orbit-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
+
+  .ob-ui{
+    position:absolute;inset:0;z-index:3;pointer-events:none;
+    display:flex;flex-direction:column;
+    padding:calc(var(--safe-t) + 14px) 18px calc(var(--safe-b) + 16px);
+  }
+  .ob-top{flex:0 0 auto;text-align:center;}
+  .ob-tag{
+    font-family:var(--font-mono);font-size:8.5px;letter-spacing:.34em;text-transform:uppercase;
+    color:rgba(150,170,220,.5);
+  }
+  .ob-title{
+    font-family:var(--font-display);font-size:clamp(21px,5.4vw,30px);line-height:1.12;
+    margin:8px 0 3px;color:#eef2ff;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+    text-shadow:0 0 26px rgba(120,160,255,.3);
+  }
+  .ob-artist{
+    font-family:var(--font-mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;
+    color:rgba(160,180,225,.62);margin:0;
+  }
+  .ob-spacer{flex:1 1 auto;min-height:0;}
+
+  /* readout + transport, kept thin so the globe stays the subject */
+  .ob-bot{flex:0 0 auto;pointer-events:auto;}
+  .ob-seek{position:relative;height:34px;display:flex;align-items:center;cursor:pointer;touch-action:none;}
+  .ob-seek::before{
+    content:"";position:absolute;left:0;right:0;height:1px;
+    background:rgba(150,175,230,.22);
+  }
+  .ob-fill{
+    position:absolute;left:0;height:1px;
+    background:linear-gradient(90deg, rgba(140,180,255,.5), #dce9ff);
+    box-shadow:0 0 10px rgba(150,190,255,.65);
+  }
+  .ob-dot{
+    position:absolute;width:6px;height:6px;border-radius:50%;background:#eaf1ff;
+    transform:translateX(-3px);box-shadow:0 0 12px rgba(160,200,255,.9);
+    transition:transform var(--d-1) var(--e-spring);
+  }
+  .ob-seek:active .ob-dot{transform:translateX(-3px) scale(1.5);}
+  .ob-times{
+    display:flex;justify-content:space-between;
+    font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;
+    color:rgba(150,175,230,.6);font-variant-numeric:tabular-nums;margin-top:2px;
+  }
+  .ob-keys{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:14px;}
+  .ob-key{
+    width:46px;height:46px;display:grid;place-items:center;border-radius:50%;
+    color:#c9d6f5;border:1px solid rgba(150,175,230,.2);background:rgba(120,150,220,.05);
+    transition:transform var(--d-press) var(--e-out), border-color var(--d-2) var(--e-out),
+               background var(--d-2) var(--e-out), color var(--d-2) var(--e-out);
+  }
+  .ob-key svg{width:19px;height:19px;fill:currentColor;}
+  /* the browser's own [hidden] rule is scoped to HTML and never matches an
+     <svg>, so hiding these icons has to be spelled out */
+  #orbit svg[hidden]{display:none;}
+  .ob-key:active{transform:scale(.94);}
+  @media (hover:hover){ .ob-key:hover{border-color:rgba(180,205,255,.45);background:rgba(140,175,255,.1);color:#fff;} }
+  .ob-key.big{
+    width:60px;height:60px;border-color:rgba(190,215,255,.5);
+    background:rgba(150,185,255,.14);box-shadow:0 0 30px -8px rgba(140,180,255,.7);
+  }
+  .ob-key.big svg{width:23px;height:23px;}
+  .ob-stat{
+    text-align:center;font-family:var(--font-mono);font-size:8px;letter-spacing:.26em;
+    text-transform:uppercase;color:rgba(140,165,215,.42);margin-top:12px;
+  }
   /* =========================================================================
      BIOS SKIN — a POST/setup screen in phosphor mint on black. The album art
      is redrawn as a vertical-bar particle dither on a canvas.
@@ -1330,6 +1424,15 @@
     background-repeat:repeat, no-repeat, no-repeat;
     box-shadow:inset 0 0 0 1px var(--line-2), inset 0 0 20px rgba(124,255,217,.18);
   }
+  .skin-prev-orbit{
+    background:#03060f;
+    background-image:
+      radial-gradient(circle at 50% 46%, rgba(150,190,255,.5) 0 1px, transparent 1px),
+      radial-gradient(circle at 50% 46%, transparent 61%, rgba(200,228,255,.75) 62%, transparent 66%),
+      radial-gradient(70% 60% at 35% 32%, rgba(120,160,240,.35), transparent 70%);
+    background-size:5px 5px, 100% 100%, 100% 100%;
+    box-shadow:inset 0 0 0 1px var(--line-2), inset 0 0 22px rgba(90,140,255,.25);
+  }
   .skin-meta{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
   .skin-name{font-family:var(--font-display);font-size:19px;color:var(--bone);line-height:1;}
   .skin-desc{font-size:12px;color:var(--ash);line-height:1.4;}
@@ -1533,7 +1636,7 @@
     </div>
     <div class="rwin-menu"><span><u>F</u>ile</span><span><u>E</u>dit</span><span><u>V</u>iew</span><span><u>H</u>elp</span></div>
     <div class="rfolder-body" id="rskins-body"></div>
-    <div class="rwin-status"><span class="rwin-stat">3 object(s)</span><span class="rwin-stat rwin-stat2">Skins</span></div>
+    <div class="rwin-status"><span class="rwin-stat">4 object(s)</span><span class="rwin-stat rwin-stat2">Skins</span></div>
   </div>
 
   <div class="rwin rlyrics min" id="rlyrics">
@@ -1575,6 +1678,36 @@
    <div class="crt-glass"></div>
   </div><!-- /crt-screen -->
  </div><!-- /crt -->
+</div>
+
+<!-- ============ ORBIT SKIN ============ -->
+<div id="orbit" aria-hidden="true">
+  <canvas id="orbit-canvas"></canvas>
+  <div class="ob-ui">
+    <div class="ob-top">
+      <div class="ob-tag" id="ob-tag">No signal</div>
+      <h1 class="ob-title" id="ob-title">Nothing playing</h1>
+      <p class="ob-artist" id="ob-artist">&mdash;</p>
+    </div>
+    <div class="ob-spacer"></div>
+    <div class="ob-bot">
+      <div class="ob-seek" id="ob-seek">
+        <div class="ob-fill" id="ob-fill"></div>
+        <div class="ob-dot" id="ob-head"></div>
+      </div>
+      <div class="ob-times"><span id="ob-now">0:00</span><span id="ob-end">0:00</span></div>
+      <div class="ob-keys">
+        <button class="ob-key" id="ob-prev" type="button" aria-label="Previous">
+          <svg viewBox="0 0 24 24"><path d="M6 5h2.5v14H6V5zm3.5 7L19 5v14L9.5 12z"/></svg></button>
+        <button class="ob-key big" id="ob-play" type="button" aria-label="Play">
+          <svg id="ob-ico-play" viewBox="0 0 24 24"><path d="M7 4.5l13 7.5-13 7.5v-15z"/></svg>
+          <svg id="ob-ico-pause" viewBox="0 0 24 24" hidden><path d="M6.5 4.5h3.6v15H6.5v-15zm7.4 0h3.6v15h-3.6v-15z"/></svg></button>
+        <button class="ob-key" id="ob-next" type="button" aria-label="Next">
+          <svg viewBox="0 0 24 24"><path d="M15.5 5H18v14h-2.5V5zM5 5l9.5 7L5 19V5z"/></svg></button>
+      </div>
+      <div class="ob-stat" id="ob-stat">Orbit &middot; standby</div>
+    </div>
+  </div>
 </div>
 
 <!-- ============ BIOS SKIN ============ -->
@@ -1678,6 +1811,11 @@
     <button class="skin-card stagger-in" data-skin="bios" type="button">
       <span class="skin-prev skin-prev-bios"></span>
       <span class="skin-meta"><span class="skin-name">BIOS</span><span class="skin-desc">A boot-screen readout in phosphor mint — the album art redrawn as a particle dither.</span></span>
+      <span class="skin-check">✓</span>
+    </button>
+    <button class="skin-card stagger-in" data-skin="orbit" type="button">
+      <span class="skin-prev skin-prev-orbit"></span>
+      <span class="skin-meta"><span class="skin-name">Orbit</span><span class="skin-desc">A dot-matrix globe under a network mesh. Lyrics arc overhead and every line fires a pulse across the world.</span></span>
       <span class="skin-check">✓</span>
     </button>
   </div>
@@ -2602,6 +2740,7 @@ function paint(){
   $('seek').setAttribute('aria-valuenow', Math.round(pct));
   if(typeof retroSync === 'function') retroSync();
   if(typeof biosSync  === 'function') biosSync();
+  if(typeof orbitSync === 'function') orbitSync();
 }
 function tick(){
   if(st.playing && !st.seeking) st.pos = Math.min(st.pos + 250, st.dur);
@@ -3731,7 +3870,7 @@ function renderLists(){
    SKIN — two skins now: 'aura' (the warp) and 'retro' (the Windows-95
    desktop). applyLook pins the stored skin; setSkin switches + persists.
    ========================================================================= */
-const SKINS = ['aura','retro','bios'];
+const SKINS = ['aura','retro','bios','orbit'];
 function getSkin(){ const s = localStorage.getItem('nc_skin'); return SKINS.includes(s) ? s : 'aura'; }
 function markSkinCards(){
   const s = getSkin();
@@ -3742,9 +3881,11 @@ function applyLook(){
   document.body.dataset.skin = s;
   markSkinCards();
   // only the visible skin animates — the others stop dead
-  if(s !== 'bios') { try{ BIOS.stop(); }catch(e){} }
+  if(s !== 'bios')  { try{ BIOS.stop(); }catch(e){} }
+  if(s !== 'orbit') { try{ ORB.stop(); }catch(e){} }
   if(s === 'retro'){ retroSync(); if(window.retroShowWin) window.retroShowWin(); }
   else if(s === 'bios'){ biosSync(); setTimeout(() => { try{ BIOS.start(); }catch(e){} }, 20); }
+  else if(s === 'orbit'){ orbitSync(); setTimeout(() => { try{ ORB.start(); }catch(e){} }, 20); }
   else { setTimeout(() => { try{ AU.resize(); }catch(e){} }, 20); }
 }
 function setSkin(s){
@@ -3933,7 +4074,8 @@ document.querySelectorAll('.skin-card').forEach(card => {
     body.innerHTML = '';
     [['aura','Aura','Warp field'],
      ['retro','Retro 95','This desktop'],
-     ['bios','BIOS','Boot screen']].forEach(([id, name, note]) => {
+     ['bios','BIOS','Boot screen'],
+     ['orbit','Orbit','Globe']].forEach(([id, name, note]) => {
       const row = document.createElement('button');
       row.className = 'rfolder-item' + (id === cur ? ' playing' : '');
       row.type = 'button';
@@ -4480,7 +4622,7 @@ function biosPanel(force){
   if(biosTab === 'skin'){
     el.innerHTML = '<div class="bios-head">SELECT DISPLAY ADAPTER</div>';
     const cur = getSkin();
-    [['aura','AURA','WARP FIELD'],['retro','RETRO 95','DESKTOP'],['bios','BIOS','THIS SCREEN']]
+    [['aura','AURA','WARP FIELD'],['retro','RETRO 95','DESKTOP'],['bios','BIOS','THIS SCREEN'],['orbit','ORBIT','GLOBE']]
       .forEach(([id, name, note], i) => {
         const b = document.createElement('button');
         b.className = 'bios-row' + (id === cur ? ' on' : ''); b.type = 'button';
@@ -4660,6 +4802,344 @@ function biosSync(){
   addEventListener('resize', () => { if(document.body.dataset.skin === 'bios') BIOS.resize(); });
 })();
 
+
+/* =========================================================================
+   ORBIT — a dot-matrix globe under a network mesh.
+
+   The sphere is real 3D: every land dot is a unit vector, spun about the
+   polar axis each frame and projected orthographically, with the back
+   hemisphere culled. Coastlines come from coarse lon/lat polygons — this is
+   a recognisable Earth, not a survey-grade one.
+
+   Lyrics drive it. Each new line fires a shockwave from a node that travels
+   across the surface lighting dots as it passes, and the rotation speed is
+   taken from how fast the lines are actually arriving.
+   ========================================================================= */
+const ORB = (function(){
+  const R2 = Math.PI / 180;
+
+  /* --- coarse continent outlines, [lon,lat] --- */
+  const LAND = [
+    // North America
+    [[-168,65],[-164,71],[-140,70],[-125,70],[-110,68],[-95,72],[-81,73],[-75,68],[-64,60],[-55,52],
+     [-60,46],[-66,44],[-70,41],[-75,35],[-81,25],[-84,30],[-90,29],[-97,26],[-97,21],[-105,20],
+     [-115,30],[-124,40],[-130,50],[-140,60],[-152,58],[-168,65]],
+    // Central America
+    [[-97,21],[-92,15],[-84,10],[-77,8],[-79,9],[-86,14],[-94,18],[-97,21]],
+    // South America
+    [[-81,8],[-77,1],[-80,-5],[-75,-15],[-70,-19],[-71,-30],[-73,-45],[-75,-52],[-68,-55],[-65,-45],
+     [-62,-38],[-57,-33],[-53,-25],[-48,-25],[-40,-20],[-35,-8],[-45,0],[-52,5],[-60,8],[-70,12],[-81,8]],
+    // Greenland
+    [[-58,60],[-45,60],[-30,68],[-22,70],[-20,76],[-30,83],[-45,83],[-58,76],[-58,60]],
+    // Africa
+    [[-17,15],[-17,21],[-10,28],[0,32],[10,33],[20,32],[32,31],[35,25],[43,12],[51,12],[48,3],
+     [41,-2],[40,-11],[35,-20],[32,-26],[27,-33],[18,-34],[12,-18],[9,-2],[9,4],[0,5],[-8,5],[-13,9],[-17,15]],
+    // Europe + Asia
+    [[-10,36],[-9,43],[-2,43],[0,49],[4,52],[8,54],[10,58],[16,56],[21,55],[28,56],[30,60],[22,66],
+     [28,71],[45,68],[60,70],[75,73],[95,76],[110,74],[130,73],[142,70],[160,69],[170,66],[180,65],
+     [180,62],[160,60],[142,54],[135,48],[130,43],[126,40],[122,32],[120,24],[110,20],[105,10],[100,6],
+     [98,8],[95,16],[92,21],[88,22],[80,15],[77,8],[73,20],[70,26],[62,25],[57,25],[48,30],[44,37],
+     [36,36],[28,37],[20,40],[12,38],[3,37],[-5,36],[-10,36]],
+    // India is inside the Eurasia ring above; SE Asia islands
+    [[95,5],[105,-2],[115,-8],[125,-9],[135,-3],[132,1],[120,2],[108,3],[98,6],[95,5]],
+    // Australia
+    [[113,-22],[114,-30],[118,-35],[129,-32],[137,-35],[145,-38],[150,-37],[153,-28],[146,-19],
+     [142,-11],[135,-12],[130,-11],[126,-14],[121,-18],[113,-22]],
+    // Antarctica rim
+    [[-180,-70],[180,-70],[180,-85],[-180,-85],[-180,-70]],
+  ];
+
+  function inPoly(lon, lat, poly){
+    let hit = false;
+    for(let i = 0, j = poly.length - 1; i < poly.length; j = i++){
+      const xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1];
+      if(((yi > lat) !== (yj > lat)) && (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi)) hit = !hit;
+    }
+    return hit;
+  }
+  const isLand = (lon, lat) => LAND.some(p => inPoly(lon, lat, p));
+
+  /* --- network nodes: real-ish city coordinates --- */
+  const CITIES = [
+    [-74,41],[-87,42],[-118,34],[-122,37],[-99,19],[-47,-23],[-58,-34],[-70,-33],
+    [0,52],[2,49],[13,52],[37,56],[28,41],[31,30],[3,7],[18,-34],[36,-1],
+    [55,25],[72,19],[77,29],[100,14],[103,1],[114,22],[121,31],[139,36],[127,37],
+    [151,-34],[175,-37],[-79,44],[-123,49],[-3,40],[12,42],[-9,39],[19,48],[24,60],
+  ];
+
+  let cv, ctx, w = 0, h = 0, dpr = 1, cx = 0, cy = 0, rad = 0;
+  let dots = [], nodes = [], links = [];
+  let running = false, raf = 0, last = 0;
+  let yaw = 0, spin = 0.055;                 // radians/sec
+  const TILT = 21 * R2;
+  const cosT = Math.cos(TILT), sinT = Math.sin(TILT);
+
+  let waves = [];                            // {src:[x,y,z], t0, life}
+  let lyricKey = '', lyricIdx = -2, pace = 3.2;
+
+  function build(){
+    dots = [];
+    // even-area sampling: fewer columns near the poles
+    for(let lat = -84; lat <= 84; lat += 2.1){
+      const c = Math.cos(lat * R2);
+      const step = 2.1 / Math.max(0.22, c);
+      for(let lon = -180; lon < 180; lon += step){
+        if(!isLand(lon, lat)) continue;
+        const la = lat * R2, lo = lon * R2;
+        dots.push({
+          x: Math.cos(la) * Math.cos(lo), y: Math.sin(la), z: Math.cos(la) * Math.sin(lo),
+          j: 0.55 + Math.random() * 0.45,          // per-dot brightness jitter
+        });
+      }
+    }
+    nodes = CITIES.map(([lon, lat]) => {
+      const la = lat * R2, lo = lon * R2;
+      return { x: Math.cos(la) * Math.cos(lo), y: Math.sin(la), z: Math.cos(la) * Math.sin(lo) };
+    });
+    // link each node to its two nearest neighbours — a sparse, plausible mesh
+    links = [];
+    const seen = new Set();
+    nodes.forEach((a, i) => {
+      const near = nodes.map((b, k) => ({ k, d: a.x*b.x + a.y*b.y + a.z*b.z }))
+        .filter(o => o.k !== i).sort((p, q) => q.d - p.d).slice(0, 2);
+      near.forEach(o => {
+        const key = Math.min(i, o.k) + ':' + Math.max(i, o.k);
+        if(seen.has(key)) return;
+        seen.add(key);
+        links.push([i, o.k]);
+      });
+    });
+  }
+
+  function resize(){
+    if(!cv) cv = $('orbit-canvas');
+    if(!cv) return;
+    ctx = ctx || cv.getContext('2d');
+    const r = cv.getBoundingClientRect();
+    if(r.width < 2) return;
+    dpr = Math.min(devicePixelRatio || 1, 2);
+    w = r.width; h = r.height;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    cx = w / 2; cy = h * 0.46;
+    rad = Math.min(w * 0.42, h * 0.30);
+    if(!dots.length) build();
+  }
+
+  // spin about the polar axis, then tilt the pole toward the viewer
+  function project(p, sy, cyw){
+    const x = p.x * cyw - p.z * sy;
+    const z = p.x * sy + p.z * cyw;
+    const y2 = p.y * cosT - z * sinT;
+    const z2 = p.y * sinT + z * cosT;
+    return { sx: cx + x * rad, sy: cy - y2 * rad, d: z2, rx: x, ry: y2, rz: z2 };
+  }
+
+  function frame(now){
+    if(!running) return;
+    raf = requestAnimationFrame(frame);
+    if(!w || !rad) return;
+    const dt = Math.min(0.05, (now - (last || now)) / 1000);
+    last = now;
+    yaw += spin * dt;
+
+    ctx.clearRect(0, 0, w, h);
+    const sy = Math.sin(yaw), cyw = Math.cos(yaw);
+    const t = now / 1000;
+
+    // live shockwaves, each expanding as an angular radius
+    waves = waves.filter(v => t - v.t0 < v.life);
+
+    // --- land dots ---
+    for(let i = 0; i < dots.length; i++){
+      const p = dots[i];
+      const q = project(p, sy, cyw);
+      if(q.d < 0.02) continue;                        // back of the globe
+      let b = (0.22 + q.d * 0.62) * p.j;
+      for(const v of waves){                           // lit by a passing wave
+        const cosd = q.rx * v.src[0] + q.ry * v.src[1] + q.rz * v.src[2];
+        const ang = Math.acos(Math.max(-1, Math.min(1, cosd)));
+        const age = (t - v.t0) / v.life;
+        const front = age * 3.2;                       // wave radius in radians
+        const d = Math.abs(ang - front);
+        if(d < 0.26) b += (1 - d / 0.26) * (1 - age) * 1.5;
+      }
+      if(b <= 0.03) continue;
+      const s = q.d > 0.72 ? 1.7 : 1.3;
+      ctx.fillStyle = b > 0.72
+        ? 'rgba(232,242,255,' + Math.min(1, b) + ')'
+        : 'rgba(163,193,248,' + Math.min(0.95, b) + ')';
+      ctx.fillRect(q.sx, q.sy, s, s);
+    }
+
+    // --- mesh ---
+    ctx.lineWidth = 0.7;
+    for(const [a, b] of links){
+      const p = project(nodes[a], sy, cyw), q = project(nodes[b], sy, cyw);
+      if(p.d < 0 && q.d < 0) continue;
+      let alpha = 0.1 + Math.max(0, Math.min(p.d, q.d)) * 0.3;
+      for(const v of waves){
+        const age = (t - v.t0) / v.life;
+        const cosd = p.rx * v.src[0] + p.ry * v.src[1] + p.rz * v.src[2];
+        const ang = Math.acos(Math.max(-1, Math.min(1, cosd)));
+        if(Math.abs(ang - age * 3.2) < 0.4) alpha += (1 - age) * 0.65;
+      }
+      ctx.strokeStyle = 'rgba(150,190,255,' + Math.min(0.9, alpha) + ')';
+      ctx.beginPath(); ctx.moveTo(p.sx, p.sy); ctx.lineTo(q.sx, q.sy); ctx.stroke();
+    }
+    // node points
+    for(const n of nodes){
+      const q = project(n, sy, cyw);
+      if(q.d < 0) continue;
+      let a = 0.25 + q.d * 0.35;
+      for(const v of waves){
+        const age = (t - v.t0) / v.life;
+        const cosd = q.rx * v.src[0] + q.ry * v.src[1] + q.rz * v.src[2];
+        if(Math.abs(Math.acos(Math.max(-1, Math.min(1, cosd))) - age * 3.2) < 0.4) a += (1 - age) * 0.8;
+      }
+      ctx.fillStyle = 'rgba(220,236,255,' + Math.min(1, a) + ')';
+      ctx.beginPath(); ctx.arc(q.sx, q.sy, 1.7, 0, 6.3); ctx.fill();
+    }
+
+    // --- the lit limb, brightest toward the top right ---
+    const lg = ctx.createLinearGradient(cx - rad, cy - rad, cx + rad, cy + rad);
+    lg.addColorStop(0, 'rgba(150,190,255,.08)');
+    lg.addColorStop(0.45, 'rgba(220,238,255,.7)');
+    lg.addColorStop(1, 'rgba(150,190,255,.06)');
+    ctx.strokeStyle = lg; ctx.lineWidth = 1.1;
+    ctx.beginPath(); ctx.arc(cx, cy, rad, 0, 6.3); ctx.stroke();
+
+    drawLyric();
+  }
+
+  /* the current line bends around the top of the globe */
+  function drawLyric(){
+    const line = currentLyric();
+    if(!line) return;
+    const r = rad + 26;
+    ctx.save();
+    ctx.font = '500 14px ' + getComputedStyle(document.body).getPropertyValue('--font-body');
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const chars = [...line];
+    // keep the arc inside a sane sweep however long the line is
+    const per = Math.min(0.085, 2.5 / Math.max(1, chars.length));
+    let a = -Math.PI / 2 - (chars.length - 1) * per / 2;
+    ctx.fillStyle = 'rgba(232,241,255,.92)';
+    ctx.shadowColor = 'rgba(140,185,255,.7)'; ctx.shadowBlur = 12;
+    for(const ch of chars){
+      ctx.save();
+      ctx.translate(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+      ctx.rotate(a + Math.PI / 2);
+      ctx.fillText(ch, 0, 0);
+      ctx.restore();
+      a += per;
+    }
+    ctx.restore();
+  }
+
+  function currentLyric(){
+    if(typeof LYRICS === 'undefined' || LYRICS.state !== 'synced' || !LYRICS.lines) return '';
+    let idx = -1;
+    for(let i = 0; i < LYRICS.lines.length; i++){
+      if(LYRICS.lines[i].t <= st.pos + 250) idx = i; else break;
+    }
+    return idx >= 0 ? LYRICS.lines[idx].s : '';
+  }
+
+  /* Watch the lyric line change: fire a wave and re-derive the spin speed
+     from how quickly lines are landing. */
+  function tick(){
+    if(typeof LYRICS === 'undefined') return;
+    if(LYRICS.key !== lyricKey){
+      lyricKey = LYRICS.key; lyricIdx = -2;
+      pace = 3.2;
+      if(LYRICS.state === 'synced' && LYRICS.lines && LYRICS.lines.length > 2){
+        const gaps = [];
+        for(let i = 1; i < LYRICS.lines.length; i++){
+          const g = (LYRICS.lines[i].t - LYRICS.lines[i-1].t) / 1000;
+          if(g > 0.3 && g < 20) gaps.push(g);
+        }
+        if(gaps.length){
+          gaps.sort((a, b) => a - b);
+          pace = gaps[Math.floor(gaps.length / 2)];        // median seconds per line
+        }
+      }
+      // words coming quickly spin the world faster
+      spin = 0.055 * Math.max(0.55, Math.min(2.6, 3.2 / pace));
+    }
+    if(LYRICS.state !== 'synced' || !LYRICS.lines) return;
+    let idx = -1;
+    for(let i = 0; i < LYRICS.lines.length; i++){
+      if(LYRICS.lines[i].t <= st.pos + 250) idx = i; else break;
+    }
+    if(idx !== lyricIdx){
+      lyricIdx = idx;
+      if(idx >= 0 && st.playing) pulse();
+    }
+  }
+
+  function pulse(){
+    if(!nodes.length) return;
+    const n = nodes[(Math.random() * nodes.length) | 0];
+    waves.push({ src: [n.x, n.y, n.z], t0: performance.now() / 1000, life: 1.5 });
+    if(waves.length > 4) waves.shift();
+  }
+
+  function start(){
+    resize();
+    if(running) return;
+    running = true; last = 0;
+    raf = requestAnimationFrame(frame);
+  }
+  function stop(){ running = false; cancelAnimationFrame(raf); }
+
+  return { start, stop, resize, tick, pulse,
+           stats: () => ({ dots: dots.length, links: links.length, waves: waves.length,
+                           spin: +spin.toFixed(4), pace: +pace.toFixed(2), on: running }) };
+})();
+
+function orbitSync(){
+  if(document.body.dataset.skin !== 'orbit') return;
+  ORB.tick();
+  $('ob-title').textContent  = $('title').textContent;
+  $('ob-artist').textContent = $('artist').textContent;
+  $('ob-tag').textContent    = st.id ? 'Now playing' : 'No signal';
+  $('ob-fill').style.width = $('fill').style.width;
+  $('ob-head').style.left  = $('fill').style.width;
+  $('ob-now').textContent = $('t-now').textContent;
+  $('ob-end').textContent = $('t-end').textContent;
+  $('ob-ico-play').toggleAttribute('hidden', !!st.playing);
+  $('ob-ico-pause').toggleAttribute('hidden', !st.playing);
+  const s = ORB.stats();
+  $('ob-stat').textContent = !st.id ? 'Orbit · standby'
+    : (LYRICS.state === 'synced' ? 'Lyrics locked · ' + s.pace + 's/line' : 'Orbit · free spin');
+  // keep lyrics warm here too, so the globe has words to react to
+  if(st.id) loadLyrics($('title').textContent, $('artist').textContent,
+                       ($('ab-album') && $('ab-album').textContent) || '', st.dur);
+}
+
+(function ORBITWIRE(){
+  const fwd = (id, target) => { const el = $(id); if(el) el.onclick = () => $(target).click(); };
+  fwd('ob-prev', 'btn-prev');
+  fwd('ob-play', 'btn-play');
+  fwd('ob-next', 'btn-next');
+
+  const seek = $('ob-seek');
+  if(seek) seek.addEventListener('pointerdown', async e => {
+    if(!st.dur) return;
+    const r = seek.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+    const ms = Math.round(frac * st.dur);
+    st.pos = ms; st.seeking = true;
+    $('ob-fill').style.width = (frac * 100) + '%';
+    await control('/me/player/seek?position_ms=' + ms, { method:'PUT' });
+    st.seeking = false;
+    setTimeout(poll, 300);
+  });
+
+  addEventListener('resize', () => { if(document.body.dataset.skin === 'orbit') ORB.resize(); });
+})();
+
 /* =========================================================================
    PREMIUM — ambient depth + microinteractions. Additive polish only; every
    effect is GPU-friendly (transform/opacity), pointer effects are desktop-
@@ -4808,7 +5288,7 @@ function enterApp(){
   // brief version stamp so we can confirm the latest file actually loaded
   (function(){
     const v = document.createElement('div');
-    v.textContent = 'build v21';
+    v.textContent = 'build v22';
     v.style.cssText = 'position:fixed;right:8px;top:calc(var(--safe-t) + 4px);z-index:99;'+
       'font:9px monospace;color:#4C7BFF;opacity:.7;pointer-events:none;';
     document.body.appendChild(v);
