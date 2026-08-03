@@ -2766,8 +2766,17 @@ function paint(){
   if(typeof biosSync  === 'function') biosSync();
   if(typeof orbitSync === 'function') orbitSync();
 }
+let lastTick = 0;
 function tick(){
-  if(st.playing && !st.seeking) st.pos = Math.min(st.pos + 250, st.dur);
+  // Advance by however long actually passed, not a flat 250ms. Browsers
+  // throttle this interval when the page is hidden or busy, so assuming a
+  // full tick each time let the position — and with it the lyric line —
+  // drift behind what Spotify is really playing. The cap stops a long spell
+  // in the background from overshooting before the next poll corrects us.
+  const now = performance.now();
+  const dt = lastTick ? Math.min(now - lastTick, 2000) : 250;
+  lastTick = now;
+  if(st.playing && !st.seeking) st.pos = Math.min(st.pos + dt, st.dur);
   paint();
 }
 function setPlayIcon(on){
@@ -5327,7 +5336,15 @@ const ORB = (function(){
   }
   function stop(){ running = false; cancelAnimationFrame(raf); }
 
-  return { start, stop, resize, tick, pulse,
+  /* Coming back from the background, rAF has been stopped for a while and the
+     playback clock has drifted. Land any transition that was mid-flight and
+     forget the current line so the right one is worked out again. */
+  function resync(){
+    lyricT0 = -9; lyricPrev = ''; lyricIdx = -2;
+    waves.length = 0; last = 0;
+  }
+
+  return { start, stop, resize, tick, pulse, resync,
            stats: () => ({ dots: dots.length, links: links.length, waves: waves.length,
                            spin: +spin.toFixed(4), pace: +pace.toFixed(2), on: running }) };
 })();
@@ -5351,6 +5368,30 @@ function orbitSync(){
   if(st.id) loadLyrics($('title').textContent, $('artist').textContent,
                        ($('ab-album') && $('ab-album').textContent) || '', st.dur);
 }
+
+/* Returning from the background is where lyrics came apart. Three things go
+   wrong at once: the 250ms ticker is throttled while hidden, so our local
+   playback position falls behind Spotify's; the fade timer for a line change
+   may have been suspended mid-swap, leaving the strip stuck at opacity 0; and
+   every lyric view guards on "has the line index changed", so a stuck view
+   never redraws itself. Fix all three the moment we are visible again. */
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden) return;
+
+  // 1. land any half-finished line change
+  clearTimeout(lySwap);
+  const el = $('bios-lyric-t');
+  if(el) el.classList.remove('out');
+
+  // 2. drop the guards so each view recomputes from the real position
+  lyCur = -2;
+  try{ ORB.resync(); }catch(e){}
+  try{ if(window.retroLyricTick) window.retroLyricTick(true); }catch(e){}
+
+  // 3. pull the true position back rather than waiting for the next scheduled
+  //    poll, then repaint everything that reads it
+  Promise.resolve(poll()).then(() => { try{ paint(); }catch(e){} }).catch(() => {});
+});
 
 (function ORBITWIRE(){
   const fwd = (id, target) => { const el = $(id); if(el) el.onclick = () => $(target).click(); };
@@ -5527,7 +5568,7 @@ function enterApp(){
   // brief version stamp so we can confirm the latest file actually loaded
   (function(){
     const v = document.createElement('div');
-    v.textContent = 'build v25';
+    v.textContent = 'build v26';
     v.style.cssText = 'position:fixed;right:8px;top:calc(var(--safe-t) + 4px);z-index:99;'+
       'font:9px monospace;color:#4C7BFF;opacity:.7;pointer-events:none;';
     document.body.appendChild(v);
