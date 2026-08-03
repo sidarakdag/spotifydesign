@@ -4900,6 +4900,26 @@ const ORB = (function(){
   }
   let lyricKey = '', lyricIdx = -2, pace = 3.2;
   let lyricLon0 = 0, lyricText = '';        // where the line sits on the sphere
+  let lyricPrev = '', lyricPrevLon = 0, lyricT0 = -9;
+  const LYFADE = 0.5;                       // seconds for a line to change over
+
+  /* light falls from above and slightly to the left, so the top of the world
+     is lit and it falls away into shadow toward the bottom */
+  const LX = -0.28, LY = 0.86, LZ = 0.42;
+
+  let stars = [];
+  function buildStars(){
+    stars = [];
+    const n = Math.round((w * h) / 5200);
+    for(let i = 0; i < n; i++){
+      stars.push({
+        x: Math.random() * w, y: Math.random() * h,
+        r: Math.random() < 0.86 ? 0.6 : 1.1,
+        a: 0.12 + Math.random() * 0.5,
+        p: Math.random() * 6.28,           // twinkle phase
+      });
+    }
+  }
 
   function build(){
     dots = [];
@@ -4969,8 +4989,10 @@ const ORB = (function(){
     w = r.width; h = r.height;
     cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    cx = w / 2; cy = h * 0.46;
-    rad = Math.min(w * 0.47, h * 0.335);      // the world is the subject — let it fill
+    cx = w / 2; cy = h * 0.44;
+    // big enough to run off both sides, as in the reference framing
+    rad = Math.min(w * 0.60, h * 0.40);
+    buildStars();
     if(!dots.length) build();
   }
 
@@ -5035,6 +5057,14 @@ const ORB = (function(){
       return add;
     };
 
+    // ---- stars behind everything ----
+    for(let i = 0; i < stars.length; i++){
+      const st2 = stars[i];
+      const tw = 0.72 + 0.28 * Math.sin(t * 1.3 + st2.p);
+      ctx.fillStyle = 'rgba(255,255,255,' + (st2.a * tw).toFixed(3) + ')';
+      ctx.fillRect(st2.x, st2.y, st2.r, st2.r);
+    }
+
     // ---- shield, back half first so the globe sits inside the cage ----
     drawShield(sy, cyw, t, false);
 
@@ -5047,7 +5077,10 @@ const ORB = (function(){
       const p = dots[i];
       proj(p, sy, cyw);
       if(_d < 0.02) continue;                         // back of the globe
-      let b = (0.24 + _d * 0.62) * p.j;
+      // lambert-ish term: bright up top, falling into shadow lower down
+      const lam = _rx * LX + _ry * LY + _rz * LZ;
+      const shade = 0.22 + 0.78 * Math.max(0, lam * 0.5 + 0.5);
+      let b = (0.16 + _d * 0.5) * p.j * shade * 1.5;
       if(hot) b += litAt(_rx, _ry, _rz, 1.5, t);
       if(b <= 0.03) continue;
       const k = b >= 1 ? NB - 1 : (b * NB) | 0;
@@ -5078,7 +5111,7 @@ const ORB = (function(){
     }
 
     // --- the words, lying on the surface ---
-    drawLyric(sy, cyw);
+    drawLyric(sy, cyw, t);
 
     // --- the lit limb ---
     const lg = ctx.createLinearGradient(cx - rad, cy - rad, cx + rad, cy + rad);
@@ -5137,36 +5170,61 @@ const ORB = (function(){
      rides the rotation, tilts to follow the surface and drops away over the
      horizon. It's anchored facing the viewer the moment the line lands. */
   const R2D = 180 / Math.PI;
-  function drawLyric(sy, cyw){
-    const line = lyricText;
-    if(!line) return;
+
+  /* Both lines are drawn through the changeover: the outgoing one fades and
+     sinks away while the incoming one reveals a character at a time. */
+  function drawLyric(sy, cyw, t){
+    const k = Math.min(1, Math.max(0, (t - lyricT0) / LYFADE));
+    if(lyricPrev && k < 1) layLine(lyricPrev, lyricPrevLon, sy, cyw, 1 - k, -1, 0);
+    if(lyricText) layLine(lyricText, lyricLon0, sy, cyw, 1, 1, k);
+  }
+
+  /* Lay a line onto the sphere. `dir` +1 rises into place, -1 sinks away;
+     `reveal` runs 0..1 and walks the characters in one after another. */
+  function layLine(line, lon0, sy, cyw, alpha, dir, reveal){
+    if(alpha <= 0.01) return;
     const chars = [...line];
-    const lat = 9 * R2;
-    const stepLon = Math.min(6.4, 150 / Math.max(1, chars.length)) * R2;
+    // the outgoing line rises away as it fades; the incoming one lifts into
+    // place from just below, so the two never sit on top of each other
+    const lift = dir > 0 ? -(1 - reveal) * 6 : (1 - alpha) * 10;
+    const lat = (9 + lift) * R2;
+    // the globe runs off both sides, so only a narrow band of longitude is
+    // actually on screen — keep the whole line inside it
+    const span = Math.min(92, w / rad * 62);
+    const stepLon = Math.min(5.2, span / Math.max(1, chars.length)) * R2;
     const base = Math.cos(lat);
+    const size = Math.min(rad * 0.062, w * 0.05);
 
     ctx.save();
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '600 ' + size.toFixed(1) + 'px ' + FONT;
     for(let i = 0; i < chars.length; i++){
+      // each character trails the one before it into view
+      const ce = dir > 0
+        ? Math.min(1, Math.max(0, (reveal - i * (0.55 / chars.length)) * 3.4))
+        : 1;
+      if(ce <= 0.01) continue;
+
       // Screen x goes as cos(lon + yaw), so rising longitude travels leftward.
       // Characters therefore step backwards in longitude to read left to right.
-      const lon = lyricLon0 + ((chars.length - 1) / 2 - i) * stepLon;
+      const lon = lon0 + ((chars.length - 1) / 2 - i) * stepLon;
       const p = { x: base * Math.cos(lon), y: Math.sin(lat), z: base * Math.sin(lon) };
       const q = project(p, sy, cyw);
-      if(q.d < 0.12) continue;                       // gone round the back
-      // the next character's position gives the baseline direction
-      const lon2 = lon - 0.02;
-      const n = project({ x: base * Math.cos(lon2), y: Math.sin(lat), z: base * Math.sin(lon2) }, sy, cyw);
+      if(q.d < 0.1) continue;                        // gone round the back
+      const n = project({ x: base * Math.cos(lon - 0.02), y: Math.sin(lat),
+                          z: base * Math.sin(lon - 0.02) }, sy, cyw);
       const ang = Math.atan2(n.sy - q.sy, n.sx - q.sx);
-      const fade = Math.min(1, (q.d - 0.12) * 3.2);
-      const size = rad * 0.082 * (0.72 + q.d * 0.28);
+      const fade = Math.min(1, (q.d - 0.1) * 3.4) * alpha * ce;
+      if(fade <= 0.02) continue;
 
       ctx.save();
       ctx.translate(q.sx, q.sy);
       ctx.rotate(ang);
-      ctx.font = '600 ' + size.toFixed(1) + 'px ' + FONT;
-      ctx.shadowColor = 'rgba(255,255,255,.55)'; ctx.shadowBlur = 10 * fade;
-      ctx.fillStyle = 'rgba(255,255,255,' + (0.93 * fade).toFixed(3) + ')';
+      // characters swing up into place rather than snapping on
+      const g = 0.86 + 0.14 * ce;
+      ctx.scale(g, g);
+      ctx.shadowColor = 'rgba(255,255,255,.5)'; ctx.shadowBlur = 9 * fade;
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.95 * fade).toFixed(3) + ')';
       ctx.fillText(chars[i], 0, 0);
       ctx.restore();
     }
@@ -5211,10 +5269,12 @@ const ORB = (function(){
     }
     if(idx !== lyricIdx){
       lyricIdx = idx;
+      lyricPrev = lyricText; lyricPrevLon = lyricLon0;
       lyricText = idx >= 0 ? (LYRICS.lines[idx].s || '') : '';
       // drop the line onto the meridian currently facing us, so it reads
       // straight away and then drifts with the spin
       lyricLon0 = -yaw + Math.PI / 2;
+      lyricT0 = performance.now() / 1000;
       if(idx >= 0 && st.playing) pulse();
     }
   }
@@ -5429,7 +5489,7 @@ function enterApp(){
   // brief version stamp so we can confirm the latest file actually loaded
   (function(){
     const v = document.createElement('div');
-    v.textContent = 'build v23';
+    v.textContent = 'build v24';
     v.style.cssText = 'position:fixed;right:8px;top:calc(var(--safe-t) + 4px);z-index:99;'+
       'font:9px monospace;color:#4C7BFF;opacity:.7;pointer-events:none;';
     document.body.appendChild(v);
